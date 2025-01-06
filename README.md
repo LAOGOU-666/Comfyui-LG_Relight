@@ -1,6 +1,7 @@
 # Comfyui-LG_Relight
 
 Comfyui中3D实时打光的简单实现
+开源节点哈，祝大家玩的开心！
 ##
 * 普通打光
 
@@ -15,5 +16,5 @@ Comfyui中3D实时打光的简单实现
 单一的节点打光效果有限，配合ic_light效果更佳
 ![Image](./assets/show.png)
 
-# 联系我
+# 商务合作联系
 VX:wenrulaogou2033
