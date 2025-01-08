@@ -2,6 +2,11 @@
 
 Comfyui中3D实时打光的简单实现
 开源节点哈，祝大家玩的开心！
+
+## 更新V2版和Basic版，支持本地和云端
+![Image](./assets/V2.png)
+![Image](./assets/BASIC.png)
+![Image](./assets/V2_JS.png)
 ##
 * 普通打光
 
