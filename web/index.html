@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Lighting</title>
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+<div class="container">
+    <div class="inner-container">
+        <div class="canvas-container" id="canvas-container">
+            <canvas id="canvas" width="1600" height="900"></canvas>
+        </div>
+        <div class="input-container">
+            <div class="input-group-with-button">
+                <div class="input-group">
+                    <input id="light-z" type="range" min="-2.0" max="2.0" step="0.001">
+                    <label for="light-z">z</label>
+                </div>
+                <button id="apply-button" class="apply-button">应用</button>
+            </div>
+            <div class="input-group">
+                <input id="light-ambient" type="range" min="0.0" max="2.0" step="0.001">
+                <label for="light-ambient">ambient</label>
+            </div>
+            <div class="input-group">
+                <input id="light-brightness" type="range" min="0.0" max="2.0" step="0.001">
+                <label for="light-brightness">brightness</label>
+            </div>
+            <div class="input-group">
+                <input id="light-shadowRange" type="range" min="0.0" max="2.0" step="0.001">
+                <label for="light-shadowRange">shadowRange</label>
+            </div>
+            <div class="input-group">
+                <input id="light-shadowStrength" type="range" min="0.0" max="2.0" step="0.001">
+                <label for="light-shadowStrength">shadowStrength</label>
+            </div>
+            <div class="input-group">
+                <input id="light-highlightRange" type="range" min="0.0" max="2.0" step="0.001">
+                <label for="light-highlightRange">highlightRange</label>
+            </div>
+            <div class="input-group">
+                <input id="light-highlightStrength" type="range" min="0.0" max="2.0" step="0.001">
+                <label for="light-highlightStrength">highlightStrength</label>
+            </div>
+            <div class="control-group">
+                <div class="input-group">
+                    <input id="light-enableMask" type="checkbox">
+                    <label for="light-enableMask">mask</label>
+                </div>
+                <div class="input-group">
+                    <input id="light-highlightColor" type="color" value="#ffffff">
+                    <label for="light-highlightColor">highlightColor</label>
+                </div>
+                <div class="input-group">
+                    <input id="light-shadowColor" type="color" value="#000000">
+                    <label for="light-shadowColor">shadowColor</label>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script type="module" src="main.js"></script>
+<script type="module" src="relight.js"></script>
+</body>
+</html>
