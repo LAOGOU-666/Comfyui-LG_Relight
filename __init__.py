@@ -33,8 +33,11 @@ async def window_closed(request):
     try:
         data = await request.json()
         node_id = data.get("node_id")
+        original_image = data.get("original_image")
         
         if node_id:
+            if original_image:
+                image_cache[node_id] = original_image
             if node_id in event_dict:
                 event_dict[node_id].set()
             return web.Response(text=json.dumps({"status": "success"}))
