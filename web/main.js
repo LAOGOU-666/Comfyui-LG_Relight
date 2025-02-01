@@ -43,7 +43,7 @@ app.registerExtension({
     nodeCreated(node) {
         if (node.comfyClass === "LG_Relight_V2") {
             let popupWindow = null;
-
+            let originalImageData = null;  // 添加变量存储初始图片
             const handleRelightInit = async (event) => {
                 const data = event.detail;
                 console.log("收到重光照初始化消息:", data);
@@ -77,16 +77,32 @@ app.registerExtension({
                         const folderName = currentUrl.split('/').slice(-2)[0];
                         const baseUrl = `./extensions/${folderName}/index.html`;
                         
-                        // 打开新窗口，移除 scrollbars=yes
                         popupWindow = window.open(
                             baseUrl,
                             `lg_relight_${data.node_id}`,
                             `width=${popupWidth},height=${popupHeight},left=${popupLeft},top=${popupTop}`
                         );
-
+            
                         if (!popupWindow) {
                             throw new Error("弹窗被浏览器拦截，请允许弹窗后重试");
                         }
+            
+                        const checkWindow = setInterval(() => {
+                            if (popupWindow.closed) {
+                                clearInterval(checkWindow);
+                                // 使用保存的初始图片数据
+                                fetch('/lg_relight/window_closed', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({
+                                        node_id: data.node_id,
+                                        original_image: originalImageData  // 使用保存的初始图片
+                                    })
+                                });
+                            }
+                        }, 100);
 
                         const windowLoaded = new Promise((resolve, reject) => {
                             const timeout = setTimeout(() => {
@@ -101,14 +117,15 @@ app.registerExtension({
 
                         try {
                             await windowLoaded;
-
+            
                             popupWindow.postMessage({
                                 type: 'init',
                                 data: {
                                     diffuseMap: data.image,
                                     normalMap: data.normals,
                                     maskMap: data.mask,
-                                    nodeId: data.node_id
+                                    nodeId: data.node_id,
+                                    originalImage: data.image  // 同时传递原始图像到弹窗
                                 }
                             }, '*');
                         } catch (error) {
@@ -132,10 +149,12 @@ app.registerExtension({
                 if (popupWindow && !popupWindow.closed) {
                     popupWindow.close();
                 }
+                originalImageData = null;  // 清理保存的图片数据
             };
         }
     }
 });
+
 
 
 app.registerExtension({
