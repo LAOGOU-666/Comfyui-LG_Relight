@@ -81,47 +81,71 @@ class LG_Relight_V2:
 
     def relight(self, image, normals, mask, unique_id):
         try:
+            print(f"[DEBUG] 开始处理 relight 请求: node_id={unique_id}")
+            print(f"[DEBUG] 输入图像形状: image={image.shape}, normals={normals.shape}, mask={mask.shape}")
+            
             event = threading.Event()
             event_dict[unique_id] = event
+            print(f"[DEBUG] 创建事件对象: event_id={id(event)}")
             
+            # 转换图像为base64
+            print("[DEBUG] 开始转换图像为base64...")
             image_b64 = self.encode_image_to_base64(image.cpu().numpy()[0])
             normals_b64 = self.encode_image_to_base64(normals.cpu().numpy()[0])
             mask_b64 = self.encode_image_to_base64(mask.cpu().numpy(), is_mask=True)
+            print("[DEBUG] 图像转换完成")
             
-            PromptServer.instance.send_sync(
-                "lg_relight_init", 
-                {
-                    "node_id": unique_id,
-                    "image": f"data:image/png;base64,{image_b64}",
-                    "normals": f"data:image/png;base64,{normals_b64}",
-                    "mask": f"data:image/png;base64,{mask_b64}"
-                }
-            )
+            # 准备发送数据
+            send_data = {
+                "node_id": unique_id,
+                "image": f"data:image/png;base64,{image_b64}",
+                "normals": f"data:image/png;base64,{normals_b64}",
+                "mask": f"data:image/png;base64,{mask_b64}"
+            }
+            print(f"[DEBUG] 准备发送数据到前端: node_id={unique_id}, data_size={len(str(send_data))}")
             
+            # 发送数据到前端
+            print("[DEBUG] 发送数据到前端...")
+            PromptServer.instance.send_sync("lg_relight_init", send_data)
+            print("[DEBUG] 数据发送完成，等待前端响应...")
+            
+            # 等待前端响应
             event.wait()
+            print(f"[DEBUG] 收到前端响应: node_id={unique_id}")
             del event_dict[unique_id]
             
+            # 处理返回的图像
             if unique_id in image_cache:
+                print(f"[DEBUG] 找到缓存的图像: node_id={unique_id}")
                 img_data = base64.b64decode(image_cache[unique_id].split(",")[1])
                 img = Image.open(io.BytesIO(img_data))
                 img_np = np.array(img).astype(np.float32) / 255.0
                 
+                print(f"[DEBUG] 处理后的图像形状: {img_np.shape}")
+                
                 if len(img_np.shape) == 2:
+                    print("[DEBUG] 转换灰度图为RGB")
                     img_np = np.stack([img_np] * 3, axis=-1)
                 elif len(img_np.shape) == 3 and img_np.shape[-1] == 4:
+                    print("[DEBUG] 移除alpha通道")
                     img_np = img_np[..., :3]
                 
                 result = torch.from_numpy(img_np).unsqueeze(0)
-                assert result.shape[0] == 1 and result.shape[-1] == 3
+                print(f"[DEBUG] 最终输出图像形状: {result.shape}")
                 
                 del image_cache[unique_id]
                 return (result,)
-            
-            return (image,)
+            else:
+                print(f"[DEBUG] 未找到缓存的图像，返回原始图像: node_id={unique_id}")
+                return (image,)
             
         except Exception as e:
+            print(f"[ERROR] relight处理发生错误: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
             return (image,)
         finally:
+            print(f"[DEBUG] 清理资源: node_id={unique_id}")
             if unique_id in event_dict:
                 del event_dict[unique_id]
             if unique_id in image_cache:
