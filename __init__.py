@@ -8,6 +8,7 @@ import threading
 from aiohttp import web
 import json
 import torch.nn.functional as F
+from threading import Event
 image_cache = {}
 event_dict = {}
 
@@ -259,15 +260,152 @@ async def cancel_v3(request):
         return web.Response(status=500, text=json.dumps({"error": str(e)}))
 
 
+lg_relight_dict = {}
+
+class LG_Relight_Ultra:
+    _last_results = {}
+    
+    def __init__(self):
+        self.node_id = None
+    
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "bg_img": ("IMAGE",),
+                "bg_depth_map": ("IMAGE",),
+                "bg_normal_map": ("IMAGE",),
+            },
+            "optional": {
+                "mask": ("MASK",),
+            },
+            "hidden": {"unique_id": "UNIQUE_ID"}
+        }
+    
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "relight_image"
+    CATEGORY = "🎈LAOGOU"
+
+    def relight_image(self, bg_img, bg_depth_map, bg_normal_map, unique_id, mask=None):
+        try:
+            self.node_id = str(unique_id)
+            event = Event()
+            lg_relight_dict[self.node_id] = event
+            
+            bg_pil = Image.fromarray((bg_img[0] * 255).byte().cpu().numpy())
+            depth_pil = Image.fromarray((bg_depth_map[0] * 255).byte().cpu().numpy())
+            normal_pil = Image.fromarray((bg_normal_map[0] * 255).byte().cpu().numpy())
+
+            bg_buffer = io.BytesIO()
+            depth_buffer = io.BytesIO()
+            normal_buffer = io.BytesIO()
+            
+            bg_pil.save(bg_buffer, format="PNG")
+            depth_pil.save(depth_buffer, format="PNG")
+            normal_pil.save(normal_buffer, format="PNG")
+            
+            data = {
+                "node_id": self.node_id,
+                "bg_image": base64.b64encode(bg_buffer.getvalue()).decode('utf-8'),
+                "bg_depth_map": base64.b64encode(depth_buffer.getvalue()).decode('utf-8'),
+                "bg_normal_map": base64.b64encode(normal_buffer.getvalue()).decode('utf-8'),
+                "has_mask": mask is not None
+            }
+            
+            if mask is not None:
+                try:
+                    mask_np = mask
+                    if isinstance(mask, torch.Tensor):
+                        mask_np = (mask * 255).byte().cpu().numpy()
+                    
+                    if len(mask_np.shape) == 3 and mask_np.shape[0] == 1:
+                        mask_np = mask_np[0]
+                    elif len(mask_np.shape) == 4 and mask_np.shape[0] == 1:
+                        mask_np = mask_np[0]
+                    
+                    if mask_np.dtype != np.uint8:
+                        mask_np = (mask_np * 255).astype(np.uint8)
+                    
+                    mask_pil = Image.fromarray(mask_np)
+                    mask_buffer = io.BytesIO()
+                    mask_pil.save(mask_buffer, format="PNG")
+                    data["mask"] = base64.b64encode(mask_buffer.getvalue()).decode('utf-8')
+                    
+                except Exception:
+                    data["has_mask"] = False
+
+            PromptServer.instance.send_sync("relight_image", data)
+            
+            wait_result = event.wait(timeout=120)
+            if not wait_result:
+                return (bg_img,)
+            
+            if self.node_id in self._last_results:
+                result_image = self._last_results[self.node_id]
+                try:
+                    img = Image.open(io.BytesIO(result_image))
+                    img_array = np.array(img)
+                    
+                    if len(img_array.shape) == 2:
+                        img_array = np.stack([img_array] * 3, axis=-1)
+                    elif img_array.shape[-1] == 4:
+                        img_array = img_array[..., :3]
+                    
+                    img_tensor = torch.from_numpy(img_array).float() / 255.0
+                    img_tensor = img_tensor.unsqueeze(0)
+                    return (img_tensor,)
+                except Exception:
+                    return (bg_img,)
+            
+            return (bg_img,)
+            
+        finally:
+            if self.node_id in lg_relight_dict:
+                del lg_relight_dict[self.node_id]
+
+@PromptServer.instance.routes.post("/lg_relight/upload_result")
+async def upload_result(request):
+    try:
+        data = await request.post()
+        node_id = str(data['node_id'])
+        result_image = data['result_image'].file.read()
+        
+        LG_Relight_Ultra._last_results[node_id] = result_image
+        
+        if node_id in lg_relight_dict:
+            lg_relight_dict[node_id].set()
+            return web.json_response({"success": True})
+        else:
+            return web.json_response({"error": "Node not found"}, status=404)
+            
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=500)
+
+@PromptServer.instance.routes.post("/lg_relight/cancel")
+async def cancel_relight(request):
+    try:
+        data = await request.json()
+        node_id = str(data.get("node_id"))
+        
+        if node_id in lg_relight_dict:
+            lg_relight_dict[node_id].set()
+            return web.json_response({"success": True})
+        else:
+            return web.json_response({"success": True})
+        
+    except Exception as e:
+        return web.json_response({"success": False, "error": str(e)})
 
 WEB_DIRECTORY = "web"
 
 NODE_CLASS_MAPPINGS = {
     "LG_Relight_Basic": LG_Relight_Basic,
-    "LG_Relight": LG_Relight
+    "LG_Relight": LG_Relight,
+    "LG_Relight_Ultra": LG_Relight_Ultra
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "LG_Relight_Basic": "LG Relight Basic",
-    "LG_Relight": "LG Relight"
+    "LG_Relight_Basic": "🎈LG Relight Basic",
+    "LG_Relight": "🎈LG Relight",
+    "LG_Relight_Ultra": "🎈LG Relight Ultra"
 }

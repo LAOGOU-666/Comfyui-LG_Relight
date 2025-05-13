@@ -1,0 +1,466 @@
+{
+  "last_node_id": 156,
+  "last_link_id": 533,
+  "nodes": [
+    {
+      "id": 13,
+      "type": "ImpactMinMax",
+      "pos": [
+        1587.468017578125,
+        446.4409484863281
+      ],
+      "size": [
+        210,
+        78
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "a",
+          "type": "*",
+          "link": 13
+        },
+        {
+          "name": "b",
+          "type": "*",
+          "link": 14
+        }
+      ],
+      "outputs": [
+        {
+          "name": "INT",
+          "type": "INT",
+          "links": [
+            15,
+            52
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui-impact-pack",
+        "ver": "dc70f40effeb21681f30af65062bc1b2a40fdd82",
+        "Node name for S&R": "ImpactMinMax"
+      },
+      "widgets_values": [
+        false
+      ]
+    },
+    {
+      "id": 10,
+      "type": "LoadImage",
+      "pos": [
+        838.7528076171875,
+        298.15252685546875
+      ],
+      "size": [
+        315,
+        314
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            40
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.18",
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "1.png",
+        "image"
+      ]
+    },
+    {
+      "id": 12,
+      "type": "LayerUtility: ImageScaleByAspectRatio V2",
+      "pos": [
+        1201.483154296875,
+        297.75164794921875
+      ],
+      "size": [
+        336,
+        330
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "shape": 7,
+          "link": 40
+        },
+        {
+          "name": "mask",
+          "type": "MASK",
+          "shape": 7,
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "links": [
+            12,
+            53,
+            525
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "mask",
+          "type": "MASK",
+          "links": null
+        },
+        {
+          "name": "original_size",
+          "type": "BOX",
+          "links": null
+        },
+        {
+          "name": "width",
+          "type": "INT",
+          "links": [
+            13
+          ],
+          "slot_index": 3
+        },
+        {
+          "name": "height",
+          "type": "INT",
+          "links": [
+            14
+          ],
+          "slot_index": 4
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui_layerstyle",
+        "ver": "458456e464ffa53baea5ad5efe84f8345305f135",
+        "Node name for S&R": "LayerUtility: ImageScaleByAspectRatio V2"
+      },
+      "widgets_values": [
+        "original",
+        1,
+        1,
+        "crop",
+        "lanczos",
+        "64",
+        "longest",
+        2048,
+        "#000000"
+      ],
+      "color": "rgba(38, 73, 116, 0.7)"
+    },
+    {
+      "id": 11,
+      "type": "DepthAnythingPreprocessor",
+      "pos": [
+        1583.8896484375,
+        304.3936462402344
+      ],
+      "size": [
+        210,
+        78
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 12
+        },
+        {
+          "name": "resolution",
+          "type": "INT",
+          "shape": 7,
+          "widget": {
+            "name": "resolution"
+          },
+          "link": 15
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            526
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui_controlnet_aux",
+        "ver": "5a049bde9cc117dafc327cded156459289097ea1",
+        "Node name for S&R": "DepthAnythingPreprocessor"
+      },
+      "widgets_values": [
+        "depth_anything_vitl14.pth",
+        512
+      ]
+    },
+    {
+      "id": 33,
+      "type": "Metric3D-NormalMapPreprocessor",
+      "pos": [
+        1589.9364013671875,
+        577.2870483398438
+      ],
+      "size": [
+        210,
+        126
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 53
+        },
+        {
+          "name": "resolution",
+          "type": "INT",
+          "shape": 7,
+          "widget": {
+            "name": "resolution"
+          },
+          "link": 52
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            527
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui_controlnet_aux",
+        "ver": "5a049bde9cc117dafc327cded156459289097ea1",
+        "Node name for S&R": "Metric3D-NormalMapPreprocessor"
+      },
+      "widgets_values": [
+        "vit-small",
+        1000,
+        1000,
+        512
+      ]
+    },
+    {
+      "id": 156,
+      "type": "LG_Relight_Ultra",
+      "pos": [
+        1849.5479736328125,
+        299.65399169921875
+      ],
+      "size": [
+        210,
+        166
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "bg_img",
+          "type": "IMAGE",
+          "link": 525
+        },
+        {
+          "name": "bg_depth_map",
+          "type": "IMAGE",
+          "link": 526
+        },
+        {
+          "name": "bg_normal_map",
+          "type": "IMAGE",
+          "link": 527
+        },
+        {
+          "name": "mask",
+          "type": "MASK",
+          "shape": 7,
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            528
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "Comfyui-LG_Relight",
+        "ver": "e85bde22382125589feafae0f7ec7e07c3aef4c4",
+        "Node name for S&R": "LG_Relight_Ultra"
+      },
+      "widgets_values": [
+        6620222998883865,
+        "randomize",
+        ""
+      ]
+    },
+    {
+      "id": 143,
+      "type": "PreviewImage",
+      "pos": [
+        2145.65185546875,
+        300.3277893066406
+      ],
+      "size": [
+        210,
+        246
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 528
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.18",
+        "Node name for S&R": "PreviewImage"
+      },
+      "widgets_values": []
+    }
+  ],
+  "links": [
+    [
+      12,
+      12,
+      0,
+      11,
+      0,
+      "IMAGE"
+    ],
+    [
+      13,
+      12,
+      3,
+      13,
+      0,
+      "*"
+    ],
+    [
+      14,
+      12,
+      4,
+      13,
+      1,
+      "*"
+    ],
+    [
+      15,
+      13,
+      0,
+      11,
+      1,
+      "INT"
+    ],
+    [
+      40,
+      10,
+      0,
+      12,
+      0,
+      "IMAGE"
+    ],
+    [
+      52,
+      13,
+      0,
+      33,
+      1,
+      "INT"
+    ],
+    [
+      53,
+      12,
+      0,
+      33,
+      0,
+      "IMAGE"
+    ],
+    [
+      525,
+      12,
+      0,
+      156,
+      0,
+      "IMAGE"
+    ],
+    [
+      526,
+      11,
+      0,
+      156,
+      1,
+      "IMAGE"
+    ],
+    [
+      527,
+      33,
+      0,
+      156,
+      2,
+      "IMAGE"
+    ],
+    [
+      528,
+      156,
+      0,
+      143,
+      0,
+      "IMAGE"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.7513148009015783,
+      "offset": {
+        "0": -637.1597900390625,
+        "1": 149.90675354003906
+      }
+    }
+  },
+  "version": 0.4
+}
