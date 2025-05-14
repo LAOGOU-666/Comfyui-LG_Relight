@@ -1045,6 +1045,174 @@ class LightEditor {
         };
         return material;
     }
+    async processWithoutDialog(nodeId, detail) {
+        try {
+            this.currentNode = app.graph.getNodeById(nodeId);
+            if (!this.currentNode) {
+                console.error('[RelightNode] 找不到节点:', nodeId);
+                return;
+            }
+            
+            console.log('[RelightNode] 开始无弹窗处理图像...');
+            const { bg_image, bg_depth_map, bg_normal_map, has_mask, mask } = detail;
+            this.hasMask = has_mask;
+            
+            // 加载纹理
+            const texturePromises = [
+                this.base64ToTexture(bg_image),
+                this.base64ToTexture(bg_depth_map),
+                this.base64ToTexture(bg_normal_map)
+            ];
+            
+            if (has_mask && mask) {
+                texturePromises.push(this.base64ToTexture(mask));
+            }
+            
+            const loadedTextures = await Promise.all(texturePromises);
+            const texture = loadedTextures[0];
+            const depthMap = loadedTextures[1];
+            const normalMap = loadedTextures[2];
+            const maskTexture = has_mask ? loadedTextures[3] : null;
+            
+            // 设置场景但不显示
+            if (!this.scene) {
+                // 首次创建场景
+                this.scene = new THREE.Scene();
+                const imageWidth = texture.image.width;
+                const imageHeight = texture.image.height;
+                const imageAspect = imageWidth / imageHeight;
+                
+                const frustumHeight = 2;
+                const frustumWidth = frustumHeight * imageAspect;
+                
+                this.camera = new THREE.OrthographicCamera(
+                    frustumWidth / -2,
+                    frustumWidth / 2,
+                    frustumHeight / 2,
+                    frustumHeight / -2,
+                    0.1,
+                    1000
+                );
+                this.camera.position.z = 5;
+                
+                this.renderer = new THREE.WebGLRenderer({
+                    antialias: true,
+                    preserveDrawingBuffer: true,
+                    alpha: true
+                });
+                
+                this.ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+                this.scene.add(this.ambientLight);
+                this.isSceneSetup = true;
+                
+                // 隐藏渲染器设置
+                this.renderer.setSize(imageWidth, imageHeight);
+            }
+            
+            // 设置临时场景
+            await this.setupTemporaryScene(texture, depthMap, normalMap, maskTexture);
+            
+            // 尝试恢复配置，如果没有则使用默认配置
+            const configRestored = await this.restoreLightConfiguration(nodeId);
+            if (!configRestored) {
+                // 没有现有配置，创建默认光源
+                this.createDefaultLight();
+            }
+            
+            // 渲染场景
+            this.renderer.render(this.scene, this.camera);
+            
+            // 上传结果
+            this.uploadCanvasResult(this.renderer.domElement, nodeId);
+            
+            // 保存当前配置以供将来使用
+            this.saveLightConfiguration(nodeId);
+            
+            console.log('[RelightNode] 无弹窗处理完成');
+        } catch (error) {
+            console.error('[RelightNode] 无弹窗处理错误:', error);
+        }
+    }
+    async setupTemporaryScene(texture, depthMap, normalMap, maskTexture = null) {
+        // 类似setupScene但简化版本，仅用于无弹窗处理
+        try {
+            const imageWidth = texture.image.width;
+            const imageHeight = texture.image.height;
+            const imageAspect = imageWidth / imageHeight;
+            
+            // 更新相机视锥体以匹配新图像的宽高比
+            const frustumHeight = 2;
+            const frustumWidth = frustumHeight * imageAspect;
+            
+            this.camera.left = frustumWidth / -2;
+            this.camera.right = frustumWidth / 2;
+            this.camera.top = frustumHeight / 2;
+            this.camera.bottom = frustumHeight / -2;
+            this.camera.updateProjectionMatrix();
+            
+            // 设置渲染器尺寸
+            this.renderer.setSize(imageWidth, imageHeight);
+            
+            // 创建或更新几何体
+            const geometry = new THREE.PlaneGeometry(2 * imageAspect, 2, 32, 32);
+            let material;
+            
+            // 创建材质
+            if (maskTexture) {
+                material = this.createMaskedMaterial(texture, depthMap, normalMap, maskTexture);
+            } else {
+                material = this.createSimpleMaterial(texture, depthMap, normalMap);
+            }
+            
+            // 更新或创建网格
+            if (this.mesh) {
+                this.mesh.geometry.dispose();
+                this.mesh.geometry = geometry;
+                this.mesh.material.dispose();
+                this.mesh.material = material;
+            } else {
+                this.mesh = new THREE.Mesh(geometry, material);
+                this.scene.add(this.mesh);
+            }
+            
+            this.material = material;
+            this.renderer.setClearColor(0x000000, 0);
+            
+            return true;
+        } catch (error) {
+            console.error('[RelightNode] 临时场景设置错误:', error);
+            return false;
+        }
+    }
+    createDefaultLight() {
+        // 清除现有光源
+        this.lightSources.forEach(source => {
+            this.scene.remove(source.light);
+        });
+        this.lightSources = [];
+        
+        // 创建默认光源
+        const defaultLight = {
+            id: Date.now(),
+            name: "默认光源",
+            light: new THREE.DirectionalLight(0xffffff, 1.0),
+            position: { x: 0, y: 0, z: 1.0 },
+            intensity: 1.0,
+            lightColor: '#ffffff',
+            visible: true
+        };
+        
+        defaultLight.light.position.set(0, 0, 1).normalize();
+        this.scene.add(defaultLight.light);
+        this.lightSources.push(defaultLight);
+        
+        // 设置环境光
+        if (this.ambientLight) {
+            this.ambientLight.intensity = 0.2;
+        }
+        
+        return defaultLight;
+    }
 }
 app.registerExtension({
     name: "LG_Relight_Ultra",
@@ -1069,9 +1237,16 @@ app.registerExtension({
         const lightEditor = new LightEditor();
         api.addEventListener("relight_image", async ({ detail }) => {
             try {
-                const { node_id } = detail;
+                const { node_id, skip_dialog } = detail;
                 console.log('[RelightNode] 处理节点:', node_id);
-                await lightEditor.show(node_id, detail);
+                
+                if (skip_dialog) {
+                    // 跳过弹窗，直接使用现有配置进行处理
+                    await lightEditor.processWithoutDialog(node_id, detail);
+                } else {
+                    // 显示弹窗让用户编辑
+                    await lightEditor.show(node_id, detail);
+                }
             } catch (error) {
                 console.error('[RelightNode] 处理错误:', error);
             }

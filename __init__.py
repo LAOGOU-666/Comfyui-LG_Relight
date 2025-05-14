@@ -278,6 +278,10 @@ class LG_Relight_Ultra:
             },
             "optional": {
                 "mask": ("MASK",),
+                "skip_dialog": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "开启后将不再显示光照编辑窗口，直接使用之前保存的光照设置（如果没有则使用默认设置）\nEnable to skip the lighting editor dialog and directly use previously saved lighting settings (or default settings if none exist)"
+                }),
             },
             "hidden": {"unique_id": "UNIQUE_ID"}
         }
@@ -286,7 +290,7 @@ class LG_Relight_Ultra:
     FUNCTION = "relight_image"
     CATEGORY = "🎈LAOGOU"
 
-    def relight_image(self, bg_img, bg_depth_map, bg_normal_map, unique_id, mask=None):
+    def relight_image(self, bg_img, bg_depth_map, bg_normal_map, unique_id, mask=None, skip_dialog=False):
         try:
             self.node_id = str(unique_id)
             event = Event()
@@ -309,7 +313,8 @@ class LG_Relight_Ultra:
                 "bg_image": base64.b64encode(bg_buffer.getvalue()).decode('utf-8'),
                 "bg_depth_map": base64.b64encode(depth_buffer.getvalue()).decode('utf-8'),
                 "bg_normal_map": base64.b64encode(normal_buffer.getvalue()).decode('utf-8'),
-                "has_mask": mask is not None
+                "has_mask": mask is not None,
+                "skip_dialog": skip_dialog
             }
             
             if mask is not None:
@@ -336,7 +341,7 @@ class LG_Relight_Ultra:
 
             PromptServer.instance.send_sync("relight_image", data)
             
-            wait_result = event.wait(timeout=60)
+            wait_result = event.wait(timeout=120)
             if not wait_result:
                 return (bg_img,)
             
