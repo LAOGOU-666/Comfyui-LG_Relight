@@ -336,7 +336,7 @@ class LG_Relight_Ultra:
 
             PromptServer.instance.send_sync("relight_image", data)
             
-            wait_result = event.wait(timeout=120)
+            wait_result = event.wait(timeout=60)
             if not wait_result:
                 return (bg_img,)
             
@@ -381,7 +381,7 @@ async def upload_result(request):
     except Exception as e:
         return web.json_response({"error": str(e)}, status=500)
 
-@PromptServer.instance.routes.post("/lg_relight/cancel")
+@PromptServer.instance.routes.post("/lg_relight_ultra/cancel")
 async def cancel_relight(request):
     try:
         data = await request.json()

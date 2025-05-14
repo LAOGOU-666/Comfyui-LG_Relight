@@ -381,7 +381,7 @@ class LightEditor {
     async cleanupAndClose(cancelled = false) {
         if (cancelled && this.currentNode) {
             try {
-                await api.fetchApi("/lg_relight/cancel", {
+                await api.fetchApi("/lg_relight_ultra/cancel", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -422,7 +422,7 @@ class LightEditor {
     }
     onCanvasMouseDown(event) {
         if (event.target !== this.canvasContainer &&
-            event.target !== this.renderer?.domElement) return;
+            event.target !== this.displayRenderer?.domElement) return;
         this.isMovingLight = true;
         document.addEventListener('mousemove', this.onCanvasMouseMoveHandler);
         document.addEventListener('mouseup', this.onCanvasMouseUpHandler);
@@ -441,12 +441,12 @@ class LightEditor {
         event.stopPropagation();
     }
     updateLightFromMouseEvent(event) {
-        if (!this.renderer || !this.renderer.domElement || this.activeSourceIndex === -1) return;
+        if (!this.displayRenderer || !this.displayRenderer.domElement || this.activeSourceIndex === -1) return;
         const activeSource = this.lightSources[this.activeSourceIndex];
         if (!activeSource) return;
         const mouseX = event.clientX;
         const mouseY = event.clientY;
-        const rect = this.renderer.domElement.getBoundingClientRect();
+        const rect = this.displayRenderer.domElement.getBoundingClientRect();
         const x = Math.max(0, Math.min(1, (mouseX - rect.left) / rect.width));
         const y = Math.max(0, Math.min(1, (mouseY - rect.top) / rect.height));
         this.updateLightIndicatorExact(mouseX, mouseY, activeSource.indicator);
@@ -547,10 +547,12 @@ class LightEditor {
             const imageWidth = texture.image.width;
             const imageHeight = texture.image.height;
             const imageAspect = imageWidth / imageHeight;
+
             const containerRect = this.canvasContainer.getBoundingClientRect();
             const containerWidth = containerRect.width;
             const containerHeight = containerRect.height;
             const containerAspect = containerWidth / containerHeight;
+            
             let displayWidth, displayHeight;
             if (imageAspect > containerAspect) {
                 displayWidth = containerWidth;
@@ -559,11 +561,13 @@ class LightEditor {
                 displayHeight = containerHeight;
                 displayWidth = containerHeight * imageAspect;
             }
+
+            const frustumHeight = 2;
+            const frustumWidth = frustumHeight * imageAspect;
+
             if (!this.isSceneSetup) {
                 console.log('[RelightNode] 首次创建场景');
                 this.scene = new THREE.Scene();
-                const frustumHeight = 2;
-                const frustumWidth = frustumHeight * imageAspect;
                 this.camera = new THREE.OrthographicCamera(
                     frustumWidth / -2,
                     frustumWidth / 2,
@@ -573,19 +577,47 @@ class LightEditor {
                     1000
                 );
                 this.camera.position.z = 5;
+
+                this.displayRenderer = new THREE.WebGLRenderer({
+                    antialias: true,
+                    alpha: true
+                });
+
                 this.renderer = new THREE.WebGLRenderer({
                     antialias: true,
                     preserveDrawingBuffer: true,
                     alpha: true
                 });
+                
                 this.ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
                 this.scene.add(this.ambientLight);
                 this.isSceneSetup = true;
+            } else {
+                this.camera.left = frustumWidth / -2;
+                this.camera.right = frustumWidth / 2;
+                this.camera.top = frustumHeight / 2;
+                this.camera.bottom = frustumHeight / -2;
+                this.camera.updateProjectionMatrix();
             }
-            this.renderer.setSize(displayWidth, displayHeight);
-            if (!this.canvasContainer.contains(this.renderer.domElement)) {
-                this.canvasContainer.appendChild(this.renderer.domElement);
+
+            // 设置显示渲染器的尺寸和样式
+            this.displayRenderer.setSize(displayWidth, displayHeight);
+            const displayCanvas = this.displayRenderer.domElement;
+            displayCanvas.style.maxWidth = '100%';
+            displayCanvas.style.maxHeight = '100%';
+            displayCanvas.style.margin = 'auto';
+            displayCanvas.style.position = 'absolute';
+            displayCanvas.style.left = '50%';
+            displayCanvas.style.top = '50%';
+            displayCanvas.style.transform = 'translate(-50%, -50%)';
+            
+            if (!this.canvasContainer.contains(displayCanvas)) {
+                this.canvasContainer.appendChild(displayCanvas);
             }
+            
+            // 设置输出渲染器为原始图像尺寸
+            this.renderer.setSize(imageWidth, imageHeight);
+            
             const geometry = new THREE.PlaneGeometry(2 * imageAspect, 2, 32, 32);
             let material;
             if (maskTexture) {
@@ -613,6 +645,10 @@ class LightEditor {
             canvas.style.top = '50%';
             canvas.style.transform = 'translate(-50%, -50%)';
             this.renderer.render(this.scene, this.camera);
+            
+            // 更新渲染方法
+            this.render();
+            
             console.log('[RelightNode] 场景设置完成');
             return true;
         } catch (error) {
@@ -634,7 +670,8 @@ class LightEditor {
         });
     }
     uploadCanvasResult(canvas, nodeId) {
-        canvas.toBlob(async (blob) => {
+        // 使用输出渲染器的画布而不是显示渲染器的画布
+        this.renderer.domElement.toBlob(async (blob) => {
             try {
                 console.log('[RelightNode] 正在上传渲染结果...');
                 const formData = new FormData();
@@ -797,7 +834,10 @@ class LightEditor {
         }
     }
     render() {
-        if (this.renderer && this.scene && this.camera) {
+        if (this.displayRenderer && this.renderer && this.scene && this.camera) {
+            // 更新显示用的画布
+            this.displayRenderer.render(this.scene, this.camera);
+            // 同时更新用于输出的画布
             this.renderer.render(this.scene, this.camera);
         }
     }
