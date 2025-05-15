@@ -30,8 +30,8 @@ function createRelightModal() {
                             <label>光照位置: X: <span class="light-x-value">0.0</span>, Y: <span class="light-y-value">0.0</span>, Z: <span class="light-z-value">1.0</span></label>
                         </div>
                         <div class="relight-control-item">
-                            <label>Z轴高度</label>
-                            <input type="range" class="relight-slider" id="lightZ" min="0.1" max="2" step="0.1" value="1.0">
+                            <label>Z轴偏移</label>
+                            <input type="range" class="relight-slider" id="zOffset" min="-1" max="1" step="0.05" value="0">
                         </div>
                         <div class="relight-control-item">
                             <label>光照强度</label>
@@ -77,263 +77,284 @@ function createRelightModal() {
     return modal;
 }
 const modalStyles = `
-#relight-editor-modal {
-    border: none;
-    border-radius: 8px;
-    padding: 0;
-    background: #2a2a2a;
-    width: 90vw;
-    height: 90vh;
-    max-width: 90vw;
-    max-height: 90vh;
-}
-.relight-modal-content {
-    background: #1a1a1a;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-}
-.relight-modal-header {
-    padding: 10px 15px;
-    border-bottom: 1px solid #333;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: #333;
-}
-.relight-modal-title {
-    font-size: 18px;
-    color: #fff;
-}
-.relight-modal-body {
-    flex: 1;
-    display: flex;
-    overflow: hidden;
-    height: calc(100% - 120px);
-}
-.relight-canvas-container {
-    flex: 1;
-    position: relative;
-    overflow: hidden;
-    background: #222;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-}
-.light-source-indicator {
-    position: absolute;
-    width: 24px;
-    height: 24px;
-    background: rgba(255, 255, 0, 0.8);
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-    pointer-events: none;
-    box-shadow: 0 0 15px rgba(255, 255, 100, 0.9);
-    z-index: 100;
-    opacity: 0.7;
-}
-.light-source-hint {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 12px;
-    background: rgba(0, 0, 0, 0.5);
-    padding: 5px 10px;
-    border-radius: 3px;
-    pointer-events: none;
-    opacity: 0.7;
-    transition: opacity 0.3s;
-}
-.relight-canvas-container:hover .light-source-hint {
-    opacity: 0.3;
-}
-.relight-controls {
-    width: 300px;
-    padding: 15px;
-    background: #222;
-    border-left: 1px solid #333;
-    overflow-y: auto;
-    height: 100%;
-}
-.relight-control-group {
-    margin-bottom: 15px;
-}
-.relight-control-group h3 {
-    font-size: 14px;
-    color: #ccc;
-    margin-bottom: 10px;
-    border-bottom: 1px solid #333;
-    padding-bottom: 5px;
-}
-.relight-control-item {
-    margin-bottom: 10px;
-}
-.relight-control-item label {
-    display: block;
-    color: #aaa;
-    margin-bottom: 5px;
-    font-size: 12px;
-}
-.relight-slider {
-    width: 100%;
-    background: #333;
-    height: 6px;
-    -webkit-appearance: none;
-    border-radius: 3px;
-}
-.relight-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 16px;
-    height: 16px;
-    background: #0080ff;
-    border-radius: 50%;
-    cursor: pointer;
-}
-.relight-buttons {
-    padding: 15px;
-    border-top: 1px solid #333;
-    display: flex;
-    justify-content: flex-end;
-}
-.relight-btn {
-    background: #0080ff;
-    color: white;
-    border: none;
-    padding: 8px 15px;
-    border-radius: 4px;
-    margin-left: 10px;
-    cursor: pointer;
-    font-size: 14px;
-}
-.relight-btn:hover {
-    background: #0070e0;
-}
-.relight-btn.cancel {
-    background: #444;
-}
-.relight-btn.cancel:hover {
-    background: #555;
-}
-.light-intensity-indicator {
-    width: 100%;
-    height: 10px;
-    background: linear-gradient(to right, #333, #fffa);
-    border-radius: 5px;
-    margin-top: 5px;
-}
-.light-value-display {
-    display: flex;
-    justify-content: space-between;
-    color: #aaa;
-    font-size: 12px;
-    margin-top: 5px;
-}
-.light-sources-list {
-    max-height: 200px;
-    overflow-y: auto;
-    margin-bottom: 10px;
-}
-.light-source-item {
-    background: #333;
-    border-radius: 4px;
-    padding: 8px;
-    margin-bottom: 8px;
-    position: relative;
-}
-.light-source-item.active {
-    border: 1px solid #0080ff;
-}
-.light-source-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 4px;
-}
-.light-source-color {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    margin-right: 8px;
-    box-shadow: 0 0 5px rgba(0,0,0,0.3);
-}
-.light-source-controls {
-    display: flex;
-    gap: 8px;
-}
-.light-source-controls button {
-    background: none;
-    border: none;
-    color: #aaa;
-    cursor: pointer;
-    padding: 2px 5px;
-    font-size: 12px;
-}
-.light-source-controls button:hover {
-    color: #fff;
-}
-.light-source-delete {
-    color: #ff4444 !important;
-}
-.light-source-indicator {
-    position: absolute;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-    pointer-events: none;
-    z-index: 100;
-    opacity: 0.7;
-    transition: opacity 0.3s;
-}
-.light-source-item {
-    background: #333;
-    border-radius: 4px;
-    padding: 8px;
-    margin-bottom: 8px;
-    position: relative;
-}
-.light-source-item.active {
-    border: 1px solid var(--light-color, #0080ff);
-}
-.light-source-header {
-    display: flex;
-    align-items: center;
-}
-#relight-editor-modal::backdrop {
-    background: rgba(0, 0, 0, 0.5);
-}
-#relight-editor-modal {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    margin: 0;
-}
-.light-color-picker {
-    width: 30px;
-    height: 30px;
-    padding: 0;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    background: none;
-    margin-right: 8px;
-}
-.light-color-picker::-webkit-color-swatch-wrapper {
-    padding: 0;
-}
-.light-color-picker::-webkit-color-swatch {
-    border: 2px solid #666;
-    border-radius: 4px;
-}
-.light-source-controls {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
+    #relight-editor-modal * {
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+    }
+    #relight-editor-modal {
+        border: none;
+        border-radius: 8px;
+        padding: 0;
+        background: #2a2a2a;
+        width: 90vw;
+        height: 90vh;
+        max-width: 90vw;
+        max-height: 90vh;
+    }
+    .relight-modal-content {
+        background: #1a1a1a;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    .relight-modal-header {
+        padding: 10px 15px;
+        border-bottom: 1px solid #333;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #333;
+    }
+    .relight-modal-title {
+        font-size: 18px;
+        color: #fff;
+    }
+    .relight-modal-body {
+        flex: 1;
+        display: flex;
+        overflow: hidden;
+        height: calc(100% - 120px);
+    }
+    .relight-canvas-container {
+        flex: 1;
+        position: relative;
+        overflow: hidden;
+        background: #222;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+    }
+    .light-source-indicator {
+        position: absolute;
+        width: 24px;
+        height: 24px;
+        background: #ffffff;
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+        box-shadow: 0 0 15px rgba(255, 255, 255, 0.7);
+        z-index: 100;
+        opacity: 1.0;
+        transition: opacity 0.3s;
+    }
+    .light-source-hint {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 12px;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 5px 10px;
+        border-radius: 3px;
+        pointer-events: none;
+        opacity: 0.7;
+        transition: opacity 0.3s;
+    }
+    .relight-canvas-container:hover .light-source-hint {
+        opacity: 0.3;
+    }
+    .relight-controls {
+        width: 300px;
+        padding: 15px;
+        background: #222;
+        border-left: 1px solid #333;
+        overflow-y: auto;
+        height: 100%;
+    }
+    .relight-control-group {
+        margin-bottom: 15px;
+    }
+    .relight-control-group h3 {
+        font-size: 14px;
+        color: #ccc;
+        margin-bottom: 10px;
+        border-bottom: 1px solid #333;
+        padding-bottom: 5px;
+    }
+    .relight-control-item {
+        margin-bottom: 10px;
+    }
+    .relight-control-item label {
+        display: block;
+        color: #aaa;
+        margin-bottom: 5px;
+        font-size: 12px;
+    }
+    .relight-slider {
+        width: 100%;
+        background: #333;
+        height: 6px;
+        -webkit-appearance: none;
+        border-radius: 3px;
+    }
+    .relight-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 16px;
+        height: 16px;
+        background: #0080ff;
+        border-radius: 50%;
+        cursor: pointer;
+    }
+    .relight-buttons {
+        padding: 15px;
+        border-top: 1px solid #333;
+        display: flex;
+        justify-content: flex-end;
+    }
+    .relight-btn {
+        background: #0080ff;
+        color: white;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 4px;
+        margin-left: 10px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+    .relight-btn:hover {
+        background: #0070e0;
+    }
+    .relight-btn.cancel {
+        background: #444;
+    }
+    .relight-btn.cancel:hover {
+        background: #555;
+    }
+    .light-intensity-indicator {
+        width: 100%;
+        height: 10px;
+        background: linear-gradient(to right, #333, #fffa);
+        border-radius: 5px;
+        margin-top: 5px;
+    }
+    .light-value-display {
+        display: flex;
+        justify-content: space-between;
+        color: #aaa;
+        font-size: 12px;
+        margin-top: 5px;
+    }
+    .light-sources-list {
+        max-height: 200px;
+        overflow-y: auto;
+        margin-bottom: 10px;
+    }
+    .light-source-item {
+        background: #333;
+        border-radius: 4px;
+        padding: 8px;
+        margin-bottom: 8px;
+        position: relative;
+    }
+    .light-source-item.active {
+        border: 1px solid #0080ff;
+    }
+    .light-source-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 4px;
+    }
+    .light-source-color {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        margin-right: 8px;
+        box-shadow: 0 0 5px rgba(0,0,0,0.3);
+    }
+    .light-source-controls {
+        display: flex;
+        gap: 8px;
+    }
+    .light-source-controls button {
+        background: none;
+        border: none;
+        color: #aaa;
+        cursor: pointer;
+        padding: 4px 8px;
+        font-size: 18px;
+        transition: color 0.2s;
+    }
+    .light-source-controls button:hover {
+        color: #fff;
+    }
+    .light-source-delete {
+        color: #ff4444 !important;
+    }
+    .light-source-delete:hover {
+        color: #ff6666 !important;
+    }
+    .light-source-indicator {
+        position: absolute;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+        z-index: 100;
+        opacity: 0.7;
+        transition: opacity 0.3s;
+    }
+    .light-source-item {
+        background: #333;
+        border-radius: 4px;
+        padding: 8px;
+        margin-bottom: 8px;
+        position: relative;
+    }
+    .light-source-item.active {
+        border: 1px solid var(--light-color, #0080ff);
+    }
+    .light-source-header {
+        display: flex;
+        align-items: center;
+    }
+    #relight-editor-modal::backdrop {
+        background: rgba(0, 0, 0, 0.5);
+    }
+    #relight-editor-modal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        margin: 0;
+    }
+    .light-color-picker {
+        width: 30px;
+        height: 30px;
+        padding: 0;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        background: none;
+        margin-right: 8px;
+    }
+    .light-color-picker::-webkit-color-swatch-wrapper {
+        padding: 0;
+    }
+    .light-color-picker::-webkit-color-swatch {
+        border: 2px solid #666;
+        border-radius: 4px;
+    }
+    .light-source-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .selection-ring {
+        position: absolute;
+        top: -6px;
+        left: -6px;
+        right: -6px;
+        bottom: -6px;
+        border: 6px solid #00ff00;
+        border-radius: 50%;
+        box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+    }
 `;
 class LightEditor {
     constructor() {
@@ -349,6 +370,7 @@ class LightEditor {
         this.lightX = 0;
         this.lightY = 0;
         this.lightZ = 1;
+        this.zOffset = 0;
         this.lightSources = [];
         this.activeSourceIndex = -1;
         this.indicatorColors = [
@@ -444,23 +466,33 @@ class LightEditor {
         if (!this.displayRenderer || !this.displayRenderer.domElement || this.activeSourceIndex === -1) return;
         const activeSource = this.lightSources[this.activeSourceIndex];
         if (!activeSource) return;
+        
         const mouseX = event.clientX;
         const mouseY = event.clientY;
         const rect = this.displayRenderer.domElement.getBoundingClientRect();
         const x = Math.max(0, Math.min(1, (mouseX - rect.left) / rect.width));
         const y = Math.max(0, Math.min(1, (mouseY - rect.top) / rect.height));
+        
         this.updateLightIndicatorExact(mouseX, mouseY, activeSource.indicator);
-        this.lightX = -((x * 2) - 1);
+        
+        // 移除X轴计算中的负号
+        this.lightX = ((x * 2) - 1);
         this.lightY = ((1 - y) * 2) - 1;
-        this.lightZ = Math.max(0.1, 1.0 - (Math.sqrt(this.lightX*this.lightX + this.lightY*this.lightY) / Math.SQRT2));
+        
+        // 从深度图获取Z轴高度
+        const zValue = this.getZValueFromDepthMap(x, y);
+        
         const xValueEl = this.modal.querySelector('.light-x-value');
         const yValueEl = this.modal.querySelector('.light-y-value');
         const zValueEl = this.modal.querySelector('.light-z-value');
         xValueEl.textContent = this.lightX.toFixed(2);
         yValueEl.textContent = this.lightY.toFixed(2);
-        zValueEl.textContent = this.lightZ.toFixed(2);
-        activeSource.position = { x: this.lightX, y: this.lightY, z: this.lightZ };
-        activeSource.light.position.set(this.lightX, this.lightY, this.lightZ).normalize();
+        zValueEl.textContent = zValue.toFixed(2);
+        
+        // 更新光源位置，包括从深度图获取的Z值
+        activeSource.position = { x: this.lightX, y: this.lightY, z: zValue };
+        activeSource.light.position.set(this.lightX, this.lightY, zValue);
+        
         this.render();
     }
     updateLightIndicatorExact(clientX, clientY, indicator) {
@@ -479,17 +511,31 @@ class LightEditor {
         const activeSource = this.lightSources[this.activeSourceIndex];
         if (!activeSource) return;
         switch (sliderId) {
-            case 'lightZ':
-                this.lightZ = value;
-                activeSource.position.z = value;
-                activeSource.light.position.set(
-                    activeSource.position.x,
-                    activeSource.position.y,
-                    value
-                ).normalize();
-                const zValueEl = this.modal.querySelector('.light-z-value');
-                if (zValueEl) {
-                    zValueEl.textContent = value.toFixed(2);
+            case 'zOffset':
+                this.zOffset = value;
+                // 如果有活动光源，需要更新它的z坐标（需要重新从深度图获取基础z值）
+                if (activeSource) {
+                    // 从深度图获取当前位置的基础Z值
+                    const rect = this.displayRenderer.domElement.getBoundingClientRect();
+                    const indicator = activeSource.indicator;
+                    const indicatorRect = indicator.getBoundingClientRect();
+                    const x = Math.max(0, Math.min(1, (indicatorRect.left + indicatorRect.width/2 - rect.left) / rect.width));
+                    const y = Math.max(0, Math.min(1, (indicatorRect.top + indicatorRect.height/2 - rect.top) / rect.height));
+                    
+                    // 重新计算Z值并更新光源位置
+                    const zValue = this.getZValueFromDepthMap(x, y);
+                    activeSource.position.z = zValue;
+                    activeSource.light.position.set(
+                        activeSource.position.x,
+                        activeSource.position.y,
+                        zValue
+                    );
+                    
+                    // 更新显示的Z值
+                    const zValueEl = this.modal.querySelector('.light-z-value');
+                    if (zValueEl) {
+                        zValueEl.textContent = zValue.toFixed(2);
+                    }
                 }
                 break;
             case 'lightIntensity':
@@ -540,6 +586,9 @@ class LightEditor {
     }
     async setupScene(texture, depthMap, normalMap, maskTexture = null) {
         try {
+            // 存储深度图纹理引用
+            this.depthMapTexture = depthMap;
+            
             if (!texture.image || !texture.image.complete) {
                 console.warn('[RelightNode] 纹理图像未完全加载');
                 await new Promise(resolve => setTimeout(resolve, 100));
@@ -693,28 +742,27 @@ class LightEditor {
         }, 'image/png', 1.0);
     }
     createLightSource() {
-        const colorIndex = this.lightSources.length % this.indicatorColors.length;
-        const currentColor = this.indicatorColors[colorIndex];
+        const lightIntensitySlider = this.modal.querySelector('#lightIntensity');
+        
         const lightSource = {
             id: Date.now(),
             name: `光源 ${this.lightSources.length + 1}`,
-            light: new THREE.DirectionalLight(0xffffff, 1.0),
-            position: { x: 0, y: 0, z: 2.0 },
-            intensity: 1.0,
-            indicatorColor: currentColor.color,
+            // 将 DirectionalLight 改为 PointLight，并设置衰减参数
+            light: new THREE.PointLight(0xffffff, parseFloat(lightIntensitySlider.value), 10, 2),
+            position: { x: 0, y: 0, z: 1.0 }, // 默认值，会在鼠标点击时更新
+            intensity: parseFloat(lightIntensitySlider.value),
+            indicatorColor: '#ffffff',
             lightColor: '#ffffff',
-            indicator: this.createLightIndicator(currentColor.color)
+            indicator: this.createLightIndicator('#ffffff')
         };
-        lightSource.light.position.set(0, 0, 1).normalize();
+        
+        // 直接设置点光源位置
+        lightSource.light.position.set(0, 0, 1.0);
         this.scene.add(lightSource.light);
         this.lightSources.push(lightSource);
         this.setActiveLight(this.lightSources.length - 1);
-        if (this.canvasContainer) {
-            const rect = this.canvasContainer.getBoundingClientRect();
-            const centerX = rect.left + rect.width / 2;
-            const centerY = rect.top + rect.height / 2;
-            this.updateLightIndicatorExact(centerX, centerY, lightSource.indicator);
-        }
+        
+        // 更新材质参数
         if (this.material) {
             const shininessSlider = this.modal.querySelector('#shininess');
             const specularStrengthSlider = this.modal.querySelector('#specularStrength');
@@ -725,6 +773,15 @@ class LightEditor {
                 parseFloat(specularStrengthSlider.value)
             );
         }
+        
+        // 确保环境光强度与UI滑块一致
+        if (this.ambientLight) {
+            const ambientLightSlider = this.modal.querySelector('#ambientLight');
+            if (ambientLightSlider) {
+                this.ambientLight.intensity = parseFloat(ambientLightSlider.value);
+            }
+        }
+        
         return lightSource;
     }
     createLightIndicator(color) {
@@ -732,6 +789,14 @@ class LightEditor {
         indicator.className = 'light-source-indicator';
         indicator.style.backgroundColor = color;
         indicator.style.boxShadow = `0 0 15px ${color}`;
+        
+        // 添加选中状态的外圈
+        const selectionRing = document.createElement('div');
+        selectionRing.className = 'selection-ring';
+        selectionRing.style.display = 'none'; // 默认隐藏
+        selectionRing.style.borderColor = '#00ff00'; // 使用亮绿色
+        indicator.appendChild(selectionRing);
+        
         this.canvasContainer.appendChild(indicator);
         return indicator;
     }
@@ -742,13 +807,17 @@ class LightEditor {
         this.lightSources.forEach((source, index) => {
             const item = document.createElement('div');
             item.className = `light-source-item ${index === this.activeSourceIndex ? 'active' : ''}`;
+            
+            // 根据光源的可见状态选择眼睛图标
+            const visibilityIcon = source.light.visible ? '👁️' : '👁️‍🗨️';
+            
             item.innerHTML = `
                 <div class="light-source-header">
                     <div class="light-source-color" style="background-color: ${source.indicatorColor}"></div>
                     <div class="light-source-controls">
                         <input type="color" class="light-color-picker" value="${source.lightColor || '#ffffff'}" title="选择光源颜色">
-                        <button class="light-source-visibility" title="显示/隐藏">👁</button>
-                        <button class="light-source-delete" title="删除">🗑</button>
+                        <button class="light-source-visibility" title="${source.light.visible ? '隐藏' : '显示'}">${visibilityIcon}</button>
+                        <button class="light-source-delete" title="删除">🗑️</button>
                     </div>
                 </div>
             `;
@@ -770,15 +839,39 @@ class LightEditor {
                 visibilityBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     this.toggleLightVisibility(index);
+                    // 更新按钮图标
+                    visibilityBtn.textContent = source.light.visible ? '👁️' : '👁️‍🗨️';
+                    visibilityBtn.title = source.light.visible ? '隐藏' : '显示';
                 });
             }
             listContainer.appendChild(item);
         });
     }
     setActiveLight(index) {
+        // 先清除所有光源的选中状态
+        this.lightSources.forEach(source => {
+            if (source.indicator) {
+                const ring = source.indicator.querySelector('.selection-ring');
+                if (ring) {
+                    ring.style.display = 'none';
+                }
+            }
+        });
+
+        // 设置新的选中光源
         this.activeSourceIndex = index;
-        this.updateLightSourcesList();
         const source = this.lightSources[index];
+        if (source && source.indicator) {
+            const ring = source.indicator.querySelector('.selection-ring');
+            if (ring) {
+                ring.style.display = 'block';
+            }
+        }
+
+        // 更新光源列表
+        this.updateLightSourcesList();
+
+        // 更新控制面板的值
         if (source) {
             const lightIntensitySlider = this.modal.querySelector('#lightIntensity');
             if (lightIntensitySlider) {
@@ -898,19 +991,36 @@ class LightEditor {
     updateLightColor(index, color) {
         const source = this.lightSources[index];
         if (source) {
+            // 更新光源颜色
             source.lightColor = color;
+            source.indicatorColor = color; // 同时更新指示器颜色
             const colorObj = new THREE.Color(color);
             source.light.color = colorObj;
+    
+            // 更新光源列表中的颜色
             const listContainer = this.modal.querySelector('.light-sources-list');
             if (listContainer) {
                 const lightItem = listContainer.children[index];
                 if (lightItem) {
+                    // 更新色板颜色
                     const colorPicker = lightItem.querySelector('.light-color-picker');
                     if (colorPicker) {
                         colorPicker.value = color;
                     }
+                    // 更新指示器颜色
+                    const indicatorColor = lightItem.querySelector('.light-source-color');
+                    if (indicatorColor) {
+                        indicatorColor.style.backgroundColor = color;
+                    }
                 }
             }
+    
+            // 更新画布中的光源指示器颜色
+            if (source.indicator) {
+                source.indicator.style.backgroundColor = color;
+                source.indicator.style.boxShadow = `0 0 15px ${color}`;
+            }
+    
             this.render();
         }
     }
@@ -931,7 +1041,8 @@ class LightEditor {
                 normalScale: this.material.normalScale.x,
                 shininess: this.material.shininess,
                 specularStrength: this.material.specular.r
-            }
+            },
+            zOffset: this.zOffset
         };
         if (this.currentNode) {
             this.currentNode.lightConfig = config;
@@ -955,7 +1066,7 @@ class LightEditor {
                 lightConfig.position.x,
                 lightConfig.position.y,
                 lightConfig.position.z
-            ).normalize();
+            );
             source.intensity = lightConfig.intensity;
             source.light.intensity = lightConfig.intensity;
             source.light.visible = lightConfig.visible;
@@ -1000,6 +1111,13 @@ class LightEditor {
                 if (specularStrengthSlider) {
                     specularStrengthSlider.value = config.material.specularStrength;
                 }
+            }
+        }
+        if (config.zOffset !== undefined) {
+            this.zOffset = config.zOffset;
+            const zOffsetSlider = this.modal.querySelector('#zOffset');
+            if (zOffsetSlider) {
+                zOffsetSlider.value = config.zOffset;
             }
         }
         this.updateLightSourcesList();
@@ -1115,7 +1233,7 @@ class LightEditor {
             // 尝试恢复配置，如果没有则使用默认配置
             const configRestored = await this.restoreLightConfiguration(nodeId);
             if (!configRestored) {
-                // 没有现有配置，创建默认光源
+                // 没有现有配置，创建默认配置
                 this.createDefaultLight();
             }
             
@@ -1185,33 +1303,75 @@ class LightEditor {
         }
     }
     createDefaultLight() {
-        // 清除现有光源
         this.lightSources.forEach(source => {
             this.scene.remove(source.light);
         });
         this.lightSources = [];
         
-        // 创建默认光源
         const defaultLight = {
             id: Date.now(),
             name: "默认光源",
-            light: new THREE.DirectionalLight(0xffffff, 1.0),
+            // 创建默认点光源
+            light: new THREE.PointLight(0xffffff, 1.0, 10, 2),
             position: { x: 0, y: 0, z: 1.0 },
             intensity: 1.0,
             lightColor: '#ffffff',
             visible: true
         };
         
-        defaultLight.light.position.set(0, 0, 1).normalize();
+        // 直接设置点光源位置
+        defaultLight.light.position.set(0, 0, 1);
         this.scene.add(defaultLight.light);
         this.lightSources.push(defaultLight);
         
-        // 设置环境光
         if (this.ambientLight) {
             this.ambientLight.intensity = 0.2;
         }
         
         return defaultLight;
+    }
+    getZValueFromDepthMap(x, y) {
+        // 默认Z值，当无法从深度图获取时使用
+        const defaultZ = 1.0;
+        
+        try {
+            if (!this.depthMapTexture || !this.depthMapTexture.image) {
+                return defaultZ + this.zOffset;
+            }
+            
+            // 创建临时画布以便于读取深度图像素
+            if (!this.depthMapCanvas) {
+                this.depthMapCanvas = document.createElement('canvas');
+                this.depthMapContext = this.depthMapCanvas.getContext('2d');
+            }
+            
+            const img = this.depthMapTexture.image;
+            this.depthMapCanvas.width = img.width;
+            this.depthMapCanvas.height = img.height;
+            this.depthMapContext.drawImage(img, 0, 0);
+            
+            // 计算图像上的坐标
+            const pixelX = Math.floor(x * img.width);
+            const pixelY = Math.floor(y * img.height);
+            
+            // 获取像素数据
+            try {
+                const pixelData = this.depthMapContext.getImageData(pixelX, pixelY, 1, 1).data;
+                // 从灰度值计算深度（0-255转为0.1-2.0范围）
+                // 通常深度图白色表示更近，黑色表示更远
+                const depth = pixelData[0] / 255; // 使用红色通道作为深度值
+                
+                // 转换为z轴范围，并添加偏移量
+                const zValue = 1 + depth * 1 + this.zOffset;
+                return zValue;
+            } catch (error) {
+                console.error('[RelightNode] 读取深度图像素失败:', error);
+                return defaultZ + this.zOffset;
+            }
+        } catch (error) {
+            console.error('[RelightNode] 获取Z值时出错:', error);
+            return defaultZ + this.zOffset;
+        }
     }
 }
 app.registerExtension({
