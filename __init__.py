@@ -275,6 +275,13 @@ class LG_Relight_Ultra:
                 "bg_img": ("IMAGE",),
                 "bg_depth_map": ("IMAGE",),
                 "bg_normal_map": ("IMAGE",),
+                "wait_timeout": ("INT", {
+                    "default": 120,
+                    "min": 5,
+                    "max": 300,
+                    "step": 1,
+                    "tooltip": "等待前端响应的最大时间(秒)\nMaximum time to wait for frontend response (seconds)"
+                }),
             },
             "optional": {
                 "mask": ("MASK",),
@@ -290,7 +297,7 @@ class LG_Relight_Ultra:
     FUNCTION = "relight_image"
     CATEGORY = "🎈LAOGOU"
 
-    def relight_image(self, bg_img, bg_depth_map, bg_normal_map, unique_id, mask=None, skip_dialog=False):
+    def relight_image(self, bg_img, bg_depth_map, bg_normal_map, wait_timeout, unique_id, mask=None, skip_dialog=False):
         try:
             self.node_id = str(unique_id)
             event = Event()
@@ -341,7 +348,7 @@ class LG_Relight_Ultra:
 
             PromptServer.instance.send_sync("relight_image", data)
             
-            wait_result = event.wait(timeout=120)
+            wait_result = event.wait(timeout=wait_timeout)
             if not wait_result:
                 return (bg_img,)
             

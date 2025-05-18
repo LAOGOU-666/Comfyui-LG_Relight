@@ -1,362 +1,9 @@
 import { api } from '../../../scripts/api.js'
 import { app } from '../../../scripts/app.js'
-const relightConfig = {
-    nodeName: "LG_Relight_Ultra",
-    libraryName: "ThreeJS",
-    libraryUrl: "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js",
-    defaultSize: 512,
-    routes: {
-        uploadEndpoint: "/lg_relight/upload_result",
-        dataEvent: "relight_image"
-    }
-};
-function createRelightModal() {
-    const modal = document.createElement("dialog");
-    modal.id = "relight-editor-modal";
-    modal.innerHTML = `
-        <div class="relight-modal-content">
-            <div class="relight-modal-header">
-                <div class="relight-modal-title">光照重建 - 3D打光</div>
-            </div>
-            <div class="relight-modal-body">
-                <div class="relight-canvas-container">
-                    <div class="light-source-indicator"></div>
-                    <div class="light-source-hint">点击或拖动图像设置光源位置</div>
-                </div>
-                <div class="relight-controls">
-                    <div class="relight-control-group">
-                        <h3>光照设置</h3>
-                        <div class="relight-control-item">
-                            <label>光照位置: X: <span class="light-x-value">0.0</span>, Y: <span class="light-y-value">0.0</span>, Z: <span class="light-z-value">1.0</span></label>
-                        </div>
-                        <div class="relight-control-item">
-                            <label>Z轴偏移</label>
-                            <input type="range" class="relight-slider" id="zOffset" min="-1" max="1" step="0.05" value="0">
-                        </div>
-                        <div class="relight-control-item">
-                            <label>光照强度</label>
-                            <input type="range" class="relight-slider" id="lightIntensity" min="0" max="2" step="0.1" value="1.0">
-                            <div class="light-intensity-indicator"></div>
-                        </div>
-                        <div class="relight-control-item">
-                            <label>环境光强度</label>
-                            <input type="range" class="relight-slider" id="ambientLight" min="0" max="1" step="0.05" value="0.2">
-                        </div>
-                    </div>
-                    <div class="relight-control-group">
-                        <h3>材质设置</h3>
-                        <div class="relight-control-item">
-                            <label>法线强度</label>
-                            <input type="range" class="relight-slider" id="normalStrength" min="0" max="2" step="0.1" value="1.0">
-                        </div>
-                        <div class="relight-control-item">
-                            <label>高光强度</label>
-                            <input type="range" class="relight-slider" id="specularStrength" min="0" max="2" step="0.05" value="0.2">
-                        </div>
-                        <div class="relight-control-item">
-                            <label>光泽度</label>
-                            <input type="range" class="relight-slider" id="shininess" min="1" max="100" step="1" value="0">
-                        </div>
-                    </div>
-                    <div class="relight-control-group">
-                        <h3>光源管理</h3>
-                        <div class="light-sources-list">
-                            <!-- 这里会动态添加光源项 -->
-                        </div>
-                        <button class="relight-btn add-light">添加光源</button>
-                    </div>
-                </div>
-            </div>
-            <div class="relight-buttons">
-                <button class="relight-btn cancel">取消</button>
-                <button class="relight-btn apply">应用</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-    return modal;
-}
-const modalStyles = `
-    #relight-editor-modal * {
-        user-select: none;
-        -webkit-user-select: none;
-        -moz-user-select: none;
-        -ms-user-select: none;
-    }
-    #relight-editor-modal {
-        border: none;
-        border-radius: 8px;
-        padding: 0;
-        background: #2a2a2a;
-        width: 90vw;
-        height: 90vh;
-        max-width: 90vw;
-        max-height: 90vh;
-    }
-    .relight-modal-content {
-        background: #1a1a1a;
-        width: 100%;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-    }
-    .relight-modal-header {
-        padding: 10px 15px;
-        border-bottom: 1px solid #333;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: #333;
-    }
-    .relight-modal-title {
-        font-size: 18px;
-        color: #fff;
-    }
-    .relight-modal-body {
-        flex: 1;
-        display: flex;
-        overflow: hidden;
-        height: calc(100% - 120px);
-    }
-    .relight-canvas-container {
-        flex: 1;
-        position: relative;
-        overflow: hidden;
-        background: #222;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        cursor: pointer;
-    }
-    .light-source-indicator {
-        position: absolute;
-        width: 24px;
-        height: 24px;
-        background: #ffffff;
-        border-radius: 50%;
-        transform: translate(-50%, -50%);
-        pointer-events: none;
-        box-shadow: 0 0 15px rgba(255, 255, 255, 0.7);
-        z-index: 100;
-        opacity: 1.0;
-        transition: opacity 0.3s;
-    }
-    .light-source-hint {
-        position: absolute;
-        top: 10px;
-        left: 10px;
-        color: rgba(255, 255, 255, 0.7);
-        font-size: 12px;
-        background: rgba(0, 0, 0, 0.5);
-        padding: 5px 10px;
-        border-radius: 3px;
-        pointer-events: none;
-        opacity: 0.7;
-        transition: opacity 0.3s;
-    }
-    .relight-canvas-container:hover .light-source-hint {
-        opacity: 0.3;
-    }
-    .relight-controls {
-        width: 300px;
-        padding: 15px;
-        background: #222;
-        border-left: 1px solid #333;
-        overflow-y: auto;
-        height: 100%;
-    }
-    .relight-control-group {
-        margin-bottom: 15px;
-    }
-    .relight-control-group h3 {
-        font-size: 14px;
-        color: #ccc;
-        margin-bottom: 10px;
-        border-bottom: 1px solid #333;
-        padding-bottom: 5px;
-    }
-    .relight-control-item {
-        margin-bottom: 10px;
-    }
-    .relight-control-item label {
-        display: block;
-        color: #aaa;
-        margin-bottom: 5px;
-        font-size: 12px;
-    }
-    .relight-slider {
-        width: 100%;
-        background: #333;
-        height: 6px;
-        -webkit-appearance: none;
-        border-radius: 3px;
-    }
-    .relight-slider::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        width: 16px;
-        height: 16px;
-        background: #0080ff;
-        border-radius: 50%;
-        cursor: pointer;
-    }
-    .relight-buttons {
-        padding: 15px;
-        border-top: 1px solid #333;
-        display: flex;
-        justify-content: flex-end;
-    }
-    .relight-btn {
-        background: #0080ff;
-        color: white;
-        border: none;
-        padding: 8px 15px;
-        border-radius: 4px;
-        margin-left: 10px;
-        cursor: pointer;
-        font-size: 14px;
-    }
-    .relight-btn:hover {
-        background: #0070e0;
-    }
-    .relight-btn.cancel {
-        background: #444;
-    }
-    .relight-btn.cancel:hover {
-        background: #555;
-    }
-    .light-intensity-indicator {
-        width: 100%;
-        height: 10px;
-        background: linear-gradient(to right, #333, #fffa);
-        border-radius: 5px;
-        margin-top: 5px;
-    }
-    .light-value-display {
-        display: flex;
-        justify-content: space-between;
-        color: #aaa;
-        font-size: 12px;
-        margin-top: 5px;
-    }
-    .light-sources-list {
-        max-height: 200px;
-        overflow-y: auto;
-        margin-bottom: 10px;
-    }
-    .light-source-item {
-        background: #333;
-        border-radius: 4px;
-        padding: 8px;
-        margin-bottom: 8px;
-        position: relative;
-    }
-    .light-source-item.active {
-        border: 1px solid #0080ff;
-    }
-    .light-source-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 4px;
-    }
-    .light-source-color {
-        width: 20px;
-        height: 20px;
-        border-radius: 50%;
-        margin-right: 8px;
-        box-shadow: 0 0 5px rgba(0,0,0,0.3);
-    }
-    .light-source-controls {
-        display: flex;
-        gap: 8px;
-    }
-    .light-source-controls button {
-        background: none;
-        border: none;
-        color: #aaa;
-        cursor: pointer;
-        padding: 4px 8px;
-        font-size: 18px;
-        transition: color 0.2s;
-    }
-    .light-source-controls button:hover {
-        color: #fff;
-    }
-    .light-source-delete {
-        color: #ff4444 !important;
-    }
-    .light-source-delete:hover {
-        color: #ff6666 !important;
-    }
-    .light-source-indicator {
-        position: absolute;
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        transform: translate(-50%, -50%);
-        pointer-events: none;
-        z-index: 100;
-        opacity: 0.7;
-        transition: opacity 0.3s;
-    }
-    .light-source-item {
-        background: #333;
-        border-radius: 4px;
-        padding: 8px;
-        margin-bottom: 8px;
-        position: relative;
-    }
-    .light-source-item.active {
-        border: 1px solid var(--light-color, #0080ff);
-    }
-    .light-source-header {
-        display: flex;
-        align-items: center;
-    }
-    #relight-editor-modal::backdrop {
-        background: rgba(0, 0, 0, 0.5);
-    }
-    #relight-editor-modal {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        margin: 0;
-    }
-    .light-color-picker {
-        width: 30px;
-        height: 30px;
-        padding: 0;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        background: none;
-        margin-right: 8px;
-    }
-    .light-color-picker::-webkit-color-swatch-wrapper {
-        padding: 0;
-    }
-    .light-color-picker::-webkit-color-swatch {
-        border: 2px solid #666;
-        border-radius: 4px;
-    }
-    .light-source-controls {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .selection-ring {
-        position: absolute;
-        top: -6px;
-        left: -6px;
-        right: -6px;
-        bottom: -6px;
-        border: 6px solid #00ff00;
-        border-radius: 50%;
-        box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
-    }
-`;
-class LightEditor {
+import { createRelightModal, modalStyles } from './config.js'
+import { SceneUtils } from './scene_utils.js'
+
+export class LightEditor {
     constructor() {
         const styleElement = document.createElement('style');
         styleElement.textContent = modalStyles;
@@ -373,23 +20,15 @@ class LightEditor {
         this.zOffset = 0;
         this.lightSources = [];
         this.activeSourceIndex = -1;
-        this.indicatorColors = [
-            { color: '#FFD700', name: '黄色' },
-            { color: '#00FFFF', name: '青色' },
-            { color: '#FF69B4', name: '粉色' },
-            { color: '#32CD32', name: '绿色' },
-            { color: '#FF4500', name: '橙色' },
-            { color: '#9370DB', name: '紫色' },
-            { color: '#4169E1', name: '蓝色' },
-            { color: '#FF6347', name: '红色' }
-        ];
         this.bindEvents();
     }
+
     bindEvents() {
         this.onCanvasMouseDownHandler = this.onCanvasMouseDown.bind(this);
         this.onCanvasMouseMoveHandler = this.onCanvasMouseMove.bind(this);
         this.onCanvasMouseUpHandler = this.onCanvasMouseUp.bind(this);
         this.onSliderChangeHandler = this.onSliderChange.bind(this);
+        this.onLightTypeChangeHandler = this.onLightTypeChange.bind(this);
         const cancelBtn = this.modal.querySelector('.relight-btn.cancel');
         cancelBtn.addEventListener('click', () => this.cleanupAndClose(true));
         const applyBtn = this.modal.querySelector('.relight-btn.apply');
@@ -399,7 +38,157 @@ class LightEditor {
         sliders.forEach(slider => {
             slider.addEventListener('input', this.onSliderChangeHandler);
         });
+        
+        // 添加光源类型切换事件监听
+        const lightTypeSelect = this.modal.querySelector('#lightType');
+        if (lightTypeSelect) {
+            lightTypeSelect.addEventListener('change', this.onLightTypeChangeHandler);
+        }
     }
+
+    onLightTypeChange(event) {
+        const lightType = event.target.value;
+        const spotlightControls = this.modal.querySelectorAll('.spotlight-controls');
+        const pointlightControls = this.modal.querySelectorAll('.pointlight-controls');
+        
+        // 显示或隐藏聚光灯控制项
+        spotlightControls.forEach(control => {
+            control.style.display = lightType === 'spot' ? 'block' : 'none';
+        });
+        
+        // 显示或隐藏点光源控制项
+        pointlightControls.forEach(control => {
+            control.style.display = lightType === 'point' ? 'block' : 'none';
+        });
+        
+        // 如果有活动光源，转换其类型
+        if (this.activeSourceIndex !== -1) {
+            const activeSource = this.lightSources[this.activeSourceIndex];
+            if (activeSource) {
+                this.convertLightType(activeSource, lightType);
+            }
+        }
+    }
+    
+    convertLightType(source, newType) {
+        // 保存原始光源的属性
+        const position = source.position;
+        const intensity = source.intensity;
+        const color = source.light.color.getHex();
+        const visible = source.light.visible;
+        
+        // 从场景中移除原始光源
+        this.scene.remove(source.light);
+        if (source.lightType === 'spot' && source.light.target) {
+            this.scene.remove(source.light.target);
+        }
+        
+        // 创建新的光源
+        let newLight;
+        if (newType === 'spot') {
+            const spotlightAngleSlider = this.modal.querySelector('#spotlightAngle');
+            const spotlightPenumbraSlider = this.modal.querySelector('#spotlightPenumbra');
+            const angle = spotlightAngleSlider ? parseFloat(spotlightAngleSlider.value) * Math.PI : Math.PI / 3;
+            const penumbra = spotlightPenumbraSlider ? parseFloat(spotlightPenumbraSlider.value) : 0.2;
+            
+            newLight = new THREE.SpotLight(color, intensity, 10, angle, penumbra);
+            
+            // 设置目标点位置
+            let targetPosition;
+            if (source.targetPosition) {
+                targetPosition = source.targetPosition;
+            } else {
+                // 如果没有现成的目标点，默认设置在光源下方一些位置
+                targetPosition = {
+                    x: position.x,
+                    y: position.y - 1,
+                    z: 0
+                };
+            }
+            newLight.target.position.set(targetPosition.x, targetPosition.y, targetPosition.z);
+            source.targetPosition = targetPosition;
+            
+            this.scene.add(newLight.target);
+            
+            // 为光源添加聚光灯特有属性
+            source.spotParams = {
+                angle: angle,
+                penumbra: penumbra
+            };
+            
+            // 聚光灯指示器样式修改
+            if (source.indicator) {
+                source.indicator.style.clipPath = 'polygon(50% 0%, 0% 100%, 100% 100%)';
+                source.indicator.style.transform = 'translate(-50%, -20%)';
+            }
+            
+            // 创建连接线
+            if (!source.connectionLine) {
+                source.connectionLine = document.createElement('div');
+                source.connectionLine.className = 'spotlight-connection-line';
+                this.canvasContainer.appendChild(source.connectionLine);
+            }
+            
+            // 创建目标点指示器
+            if (!source.targetIndicator) {
+                source.targetIndicator = this.createTargetIndicator(
+                    source.lightColor || '#ffffff'
+                );
+                source.targetIndicator.style.display = 'none'; // 默认隐藏
+                this.canvasContainer.appendChild(source.targetIndicator);
+            }
+            
+            // 更新连接线位置
+            this.updateSpotlightLine(source);
+        } else {
+            const pointlightRadiusSlider = this.modal.querySelector('#pointlightRadius');
+            const radius = pointlightRadiusSlider ? parseFloat(pointlightRadiusSlider.value) : 10;
+            
+            newLight = new THREE.PointLight(color, intensity, radius, 2);
+            
+            // 点光源指示器样式恢复
+            if (source.indicator) {
+                source.indicator.style.clipPath = '';
+                source.indicator.style.borderRadius = '50%';
+                source.indicator.style.transform = 'translate(-50%, -50%)';
+            }
+            
+            // 隐藏连接线
+            if (source.connectionLine) {
+                source.connectionLine.style.display = 'none';
+            }
+            
+            // 隐藏目标点指示器
+            if (source.targetIndicator) {
+                source.targetIndicator.style.display = 'none';
+            }
+            
+            // 移除聚光灯特有属性
+            if (source.spotParams) {
+                delete source.spotParams;
+            }
+            
+            // 为点光源添加半径参数
+            source.pointParams = {
+                radius: radius
+            };
+        }
+        
+        // 设置新光源的位置和可见性
+        newLight.position.set(position.x, position.y, position.z);
+        newLight.visible = visible;
+        
+        // 更新光源对象
+        source.light = newLight;
+        source.lightType = newType;
+        
+        // 将新光源添加到场景
+        this.scene.add(newLight);
+        
+        // 更新渲染
+        this.render();
+    }
+
     async cleanupAndClose(cancelled = false) {
         if (cancelled && this.currentNode) {
             try {
@@ -423,10 +212,19 @@ class LightEditor {
             if (source.indicator && source.indicator.parentNode) {
                 source.indicator.remove();
             }
+            if (source.targetIndicator && source.targetIndicator.parentNode) {
+                source.targetIndicator.remove();
+            }
+            if (source.connectionLine && source.connectionLine.parentNode) {
+                source.connectionLine.remove();
+            }
         });
         if (this.scene) {
             this.lightSources.forEach(source => {
                 this.scene.remove(source.light);
+                if (source.lightType === 'spot' && source.light.target) {
+                    this.scene.remove(source.light.target);
+                }
             });
             this.lightSources = [];
             this.activeSourceIndex = -1;
@@ -434,6 +232,7 @@ class LightEditor {
         this.isMovingLight = false;
         this.modal.close();
     }
+
     applyChanges() {
         if (this.renderer && this.scene && this.camera && this.currentNode) {
             this.renderer.render(this.scene, this.camera);
@@ -442,26 +241,81 @@ class LightEditor {
         }
         this.cleanupAndClose();
     }
+
     onCanvasMouseDown(event) {
         if (event.target !== this.canvasContainer &&
             event.target !== this.displayRenderer?.domElement) return;
+            
+        const activeSource = this.activeSourceIndex !== -1 ? this.lightSources[this.activeSourceIndex] : null;
+        
+        // 鼠标右键，且当前有活动的聚光灯
+        if (event.button === 2 && activeSource && activeSource.lightType === 'spot') {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            // 切换到目标点编辑模式
+            activeSource.editingTarget = true;
+            
+            // 创建或显示目标点指示器
+            if (!activeSource.targetIndicator) {
+                activeSource.targetIndicator = this.createTargetIndicator(activeSource.lightColor || '#ffffff');
+                this.canvasContainer.appendChild(activeSource.targetIndicator);
+            } else {
+                activeSource.targetIndicator.style.display = 'block';
+            }
+            
+            // 更新连接线
+            if (!activeSource.connectionLine) {
+                activeSource.connectionLine = document.createElement('div');
+                activeSource.connectionLine.className = 'spotlight-connection-line';
+                this.canvasContainer.appendChild(activeSource.connectionLine);
+            }
+            
+            this.isMovingLight = true;
+            document.addEventListener('mousemove', this.onCanvasMouseMoveHandler);
+            document.addEventListener('mouseup', this.onCanvasMouseUpHandler);
+            this.updateLightFromMouseEvent(event);
+            
+            return;
+        }
+        
+        // 如果之前是在编辑目标点，现在切换回编辑光源位置
+        if (activeSource && activeSource.editingTarget) {
+            activeSource.editingTarget = false;
+        }
+        
         this.isMovingLight = true;
         document.addEventListener('mousemove', this.onCanvasMouseMoveHandler);
         document.addEventListener('mouseup', this.onCanvasMouseUpHandler);
         this.updateLightFromMouseEvent(event);
         event.stopPropagation();
     }
+
     onCanvasMouseMove(event) {
         if (!this.isMovingLight) return;
         this.updateLightFromMouseEvent(event);
         event.stopPropagation();
     }
+
     onCanvasMouseUp(event) {
+        const activeSource = this.activeSourceIndex !== -1 ? this.lightSources[this.activeSourceIndex] : null;
+        
+        // 如果处于目标点编辑模式，鼠标抬起后完成目标点的放置
+        if (activeSource && activeSource.editingTarget) {
+            activeSource.editingTarget = false;
+            
+            // 隐藏目标点指示器，但保留连接线
+            if (activeSource.targetIndicator) {
+                activeSource.targetIndicator.style.display = 'none';
+            }
+        }
+        
         this.isMovingLight = false;
         document.removeEventListener('mousemove', this.onCanvasMouseMoveHandler);
         document.removeEventListener('mouseup', this.onCanvasMouseUpHandler);
         event.stopPropagation();
     }
+
     updateLightFromMouseEvent(event) {
         if (!this.displayRenderer || !this.displayRenderer.domElement || this.activeSourceIndex === -1) return;
         const activeSource = this.lightSources[this.activeSourceIndex];
@@ -480,7 +334,7 @@ class LightEditor {
         this.lightY = ((1 - y) * 2) - 1;
         
         // 从深度图获取Z轴高度
-        const zValue = this.getZValueFromDepthMap(x, y);
+        const zValue = SceneUtils.getZValueFromDepthMap(this.depthMapTexture, x, y, this.zOffset);
         
         const xValueEl = this.modal.querySelector('.light-x-value');
         const yValueEl = this.modal.querySelector('.light-y-value');
@@ -493,8 +347,41 @@ class LightEditor {
         activeSource.position = { x: this.lightX, y: this.lightY, z: zValue };
         activeSource.light.position.set(this.lightX, this.lightY, zValue);
         
+        // 如果当前正在编辑目标点而不是光源位置
+        if (activeSource.editingTarget && activeSource.lightType === 'spot') {
+            // 更新目标点位置
+            activeSource.targetPosition = { x: this.lightX, y: this.lightY, z: 0 };
+            activeSource.light.target.position.set(this.lightX, this.lightY, 0);
+            
+            // 更新目标点指示器的位置
+            if (activeSource.targetIndicator) {
+                this.updateLightIndicatorExact(mouseX, mouseY, activeSource.targetIndicator);
+            }
+            
+            // 更新连接线
+            this.updateSpotlightLine(activeSource);
+        } else if (activeSource.lightType === 'spot') {
+            // 如果没有设置过目标点，默认指向下方
+            if (!activeSource.targetPosition) {
+                activeSource.targetPosition = { 
+                    x: this.lightX, 
+                    y: this.lightY - 1, 
+                    z: 0 
+                };
+                activeSource.light.target.position.set(
+                    activeSource.targetPosition.x,
+                    activeSource.targetPosition.y,
+                    activeSource.targetPosition.z
+                );
+            }
+            
+            // 更新连接线
+            this.updateSpotlightLine(activeSource);
+        }
+        
         this.render();
     }
+
     updateLightIndicatorExact(clientX, clientY, indicator) {
         if (!indicator) return;
         const rect = this.canvasContainer.getBoundingClientRect();
@@ -505,6 +392,7 @@ class LightEditor {
         indicator.style.top = `${offsetY}px`;
         indicator.style.display = 'block';
     }
+
     onSliderChange(event) {
         const sliderId = event.target.id;
         const value = parseFloat(event.target.value);
@@ -523,7 +411,7 @@ class LightEditor {
                     const y = Math.max(0, Math.min(1, (indicatorRect.top + indicatorRect.height/2 - rect.top) / rect.height));
                     
                     // 重新计算Z值并更新光源位置
-                    const zValue = this.getZValueFromDepthMap(x, y);
+                    const zValue = SceneUtils.getZValueFromDepthMap(this.depthMapTexture, x, y, this.zOffset);
                     activeSource.position.z = zValue;
                     activeSource.light.position.set(
                         activeSource.position.x,
@@ -548,42 +436,39 @@ class LightEditor {
                 }
                 break;
             case 'normalStrength':
-                if (this.material && this.material.uniforms && this.material.uniforms.normalScale) {
-                    this.material.uniforms.normalScale.value = value;
-                } else if (this.material && this.material.normalScale) {
+                if (this.material) {
+                    // 将法线强度应用到材质
                     this.material.normalScale.set(value, value);
+                    // 如果有必要，可以存储该值以便保存配置
+                    this.normalStrength = value;
                 }
                 break;
-            case 'specularStrength':
-                if (this.material && this.material.uniforms && this.material.uniforms.specularStrength) {
-                    this.material.uniforms.specularStrength.value = value;
-                } else if (this.material && this.material.specular) {
-                    const intensity = value;
-                    this.material.specular.setRGB(intensity, intensity, intensity);
+            case 'spotlightAngle':
+                if (activeSource.lightType === 'spot') {
+                    activeSource.light.angle = value * Math.PI;
+                    activeSource.spotParams.angle = value * Math.PI;
                 }
                 break;
-            case 'shininess':
-                if (this.material && this.material.uniforms && this.material.uniforms.shininess) {
-                    this.material.uniforms.shininess.value = value;
-                } else if (this.material) {
-                    this.material.shininess = value;
+            case 'spotlightPenumbra':
+                if (activeSource.lightType === 'spot') {
+                    activeSource.light.penumbra = value;
+                    activeSource.spotParams.penumbra = value;
+                }
+                break;
+            case 'pointlightRadius':
+                if (activeSource.lightType === 'point') {
+                    activeSource.light.distance = value;
+                    if (activeSource.pointParams) {
+                        activeSource.pointParams.radius = value;
+                    } else {
+                        activeSource.pointParams = { radius: value };
+                    }
                 }
                 break;
         }
         this.render();
     }
-    base64ToTexture(base64String) {
-        return new Promise((resolve) => {
-            const texture = new THREE.Texture();
-            const img = new Image();
-            img.src = `data:image/png;base64,${base64String}`;
-            img.onload = () => {
-                texture.image = img;
-                texture.needsUpdate = true;
-                resolve(texture);
-            };
-        });
-    }
+
     async setupScene(texture, depthMap, normalMap, maskTexture = null) {
         try {
             // 存储深度图纹理引用
@@ -668,11 +553,16 @@ class LightEditor {
             this.renderer.setSize(imageWidth, imageHeight);
             
             const geometry = new THREE.PlaneGeometry(2 * imageAspect, 2, 32, 32);
+            
+            // 获取法线强度值（如果已存在）
+            const normalStrengthSlider = this.modal.querySelector('#normalStrength');
+            this.normalStrength = normalStrengthSlider ? parseFloat(normalStrengthSlider.value) : 0;
+            
             let material;
             if (maskTexture) {
-                material = this.createMaskedMaterial(texture, depthMap, normalMap, maskTexture);
+                material = SceneUtils.createMaskedMaterial(texture, depthMap, normalMap, maskTexture, this.normalStrength);
             } else {
-                material = this.createSimpleMaterial(texture, depthMap, normalMap);
+                material = SceneUtils.createSimpleMaterial(texture, depthMap, normalMap, this.normalStrength);
             }
             if (this.mesh) {
                 this.mesh.geometry.dispose();
@@ -705,19 +595,7 @@ class LightEditor {
             return false;
         }
     }
-    createSimpleMaterial(baseTexture, depthMap, normalMap) {
-        const shininessSlider = this.modal.querySelector('#shininess');
-        const specularStrengthSlider = this.modal.querySelector('#specularStrength');
-        return new THREE.MeshPhongMaterial({
-            map: baseTexture,
-            normalMap: normalMap,
-            normalScale: new THREE.Vector2(1, 1),
-            displacementMap: depthMap,
-            displacementScale: 0.3,
-            shininess: parseFloat(shininessSlider.value),
-            specular: new THREE.Color(parseFloat(specularStrengthSlider.value))
-        });
-    }
+
     uploadCanvasResult(canvas, nodeId) {
         // 使用输出渲染器的画布而不是显示渲染器的画布
         this.renderer.domElement.toBlob(async (blob) => {
@@ -741,37 +619,91 @@ class LightEditor {
             }
         }, 'image/png', 1.0);
     }
+
     createLightSource() {
         const lightIntensitySlider = this.modal.querySelector('#lightIntensity');
+        const lightTypeSelect = this.modal.querySelector('#lightType');
+        const lightType = lightTypeSelect ? lightTypeSelect.value : 'point';
+        
+        let light;
+        let indicator;
+        const lightIntensity = parseFloat(lightIntensitySlider.value);
+        
+        // 根据选择的光源类型创建对应的光源
+        if (lightType === 'spot') {
+            const spotlightAngleSlider = this.modal.querySelector('#spotlightAngle');
+            const spotlightPenumbraSlider = this.modal.querySelector('#spotlightPenumbra');
+            const angle = spotlightAngleSlider ? parseFloat(spotlightAngleSlider.value) * Math.PI : Math.PI / 3;
+            const penumbra = spotlightPenumbraSlider ? parseFloat(spotlightPenumbraSlider.value) : 0.2;
+            
+            light = new THREE.SpotLight(0xffffff, lightIntensity, 10, angle, penumbra);
+            light.target.position.set(0, -1, 0); // 默认向下照射
+            this.scene.add(light.target);
+            
+            indicator = this.createLightIndicator('#ffffff', 'spot');
+        } else {
+            const pointlightRadiusSlider = this.modal.querySelector('#pointlightRadius');
+            const radius = pointlightRadiusSlider ? parseFloat(pointlightRadiusSlider.value) : 10;
+            
+            light = new THREE.PointLight(0xffffff, lightIntensity, radius, 2);
+            indicator = this.createLightIndicator('#ffffff', 'point');
+        }
         
         const lightSource = {
             id: Date.now(),
             name: `光源 ${this.lightSources.length + 1}`,
-            // 将 DirectionalLight 改为 PointLight，并设置衰减参数
-            light: new THREE.PointLight(0xffffff, parseFloat(lightIntensitySlider.value), 10, 2),
+            light: light,
             position: { x: 0, y: 0, z: 1.0 }, // 默认值，会在鼠标点击时更新
-            intensity: parseFloat(lightIntensitySlider.value),
+            intensity: lightIntensity,
             indicatorColor: '#ffffff',
             lightColor: '#ffffff',
-            indicator: this.createLightIndicator('#ffffff')
+            lightType: lightType,
+            indicator: indicator,
+            editingTarget: false // 是否正在编辑目标点
         };
         
-        // 直接设置点光源位置
+        // 如果是聚光灯，添加额外的聚光灯参数
+        if (lightType === 'spot') {
+            lightSource.spotParams = {
+                angle: light.angle,
+                penumbra: light.penumbra
+            };
+            lightSource.targetPosition = { x: 0, y: -1, z: 0 };
+            
+            // 创建连接线元素
+            lightSource.connectionLine = document.createElement('div');
+            lightSource.connectionLine.className = 'spotlight-connection-line';
+            this.canvasContainer.appendChild(lightSource.connectionLine);
+            
+            // 创建目标点指示器
+            lightSource.targetIndicator = this.createTargetIndicator('#ffffff');
+            lightSource.targetIndicator.style.display = 'none'; // 默认隐藏
+            this.canvasContainer.appendChild(lightSource.targetIndicator);
+        } else if (lightType === 'point') {
+            // 为点光源添加半径参数
+            const pointlightRadiusSlider = this.modal.querySelector('#pointlightRadius');
+            const radius = pointlightRadiusSlider ? parseFloat(pointlightRadiusSlider.value) : 10;
+            lightSource.pointParams = {
+                radius: radius
+            };
+        }
+        
+        // 直接设置光源位置
         lightSource.light.position.set(0, 0, 1.0);
         this.scene.add(lightSource.light);
         this.lightSources.push(lightSource);
         this.setActiveLight(this.lightSources.length - 1);
         
-        // 更新材质参数
+        // 更新材质参数 - 固定为0
         if (this.material) {
-            const shininessSlider = this.modal.querySelector('#shininess');
-            const specularStrengthSlider = this.modal.querySelector('#specularStrength');
-            this.material.shininess = parseFloat(shininessSlider.value);
-            this.material.specular.setRGB(
-                parseFloat(specularStrengthSlider.value),
-                parseFloat(specularStrengthSlider.value),
-                parseFloat(specularStrengthSlider.value)
-            );
+            this.material.shininess = 0;
+            this.material.specular.setRGB(0, 0, 0);
+            
+            // 从滑条获取法线强度值
+            const normalStrengthSlider = this.modal.querySelector('#normalStrength');
+            const normalStrength = normalStrengthSlider ? parseFloat(normalStrengthSlider.value) : 0;
+            this.material.normalScale.set(normalStrength, normalStrength);
+            this.normalStrength = normalStrength;
         }
         
         // 确保环境光强度与UI滑块一致
@@ -784,11 +716,18 @@ class LightEditor {
         
         return lightSource;
     }
-    createLightIndicator(color) {
+
+    createLightIndicator(color, type = 'point') {
         const indicator = document.createElement('div');
         indicator.className = 'light-source-indicator';
         indicator.style.backgroundColor = color;
         indicator.style.boxShadow = `0 0 15px ${color}`;
+        
+        // 根据光源类型设置指示器样式
+        if (type === 'spot') {
+            indicator.style.clipPath = 'polygon(50% 0%, 0% 100%, 100% 100%)';
+            indicator.style.transform = 'translate(-50%, -20%)';
+        }
         
         // 添加选中状态的外圈
         const selectionRing = document.createElement('div');
@@ -800,6 +739,7 @@ class LightEditor {
         this.canvasContainer.appendChild(indicator);
         return indicator;
     }
+
     updateLightSourcesList() {
         const listContainer = this.modal.querySelector('.light-sources-list');
         if (!listContainer) return;
@@ -811,9 +751,13 @@ class LightEditor {
             // 根据光源的可见状态选择眼睛图标
             const visibilityIcon = source.light.visible ? '👁️' : '👁️‍🗨️';
             
+            // 添加光源类型图标
+            const typeIcon = source.lightType === 'spot' ? '🔦' : '💡';
+            
             item.innerHTML = `
                 <div class="light-source-header">
                     <div class="light-source-color" style="background-color: ${source.indicatorColor}"></div>
+                    <span class="light-source-name">${typeIcon} ${source.name}</span>
                     <div class="light-source-controls">
                         <input type="color" class="light-color-picker" value="${source.lightColor || '#ffffff'}" title="选择光源颜色">
                         <button class="light-source-visibility" title="${source.light.visible ? '隐藏' : '显示'}">${visibilityIcon}</button>
@@ -821,7 +765,13 @@ class LightEditor {
                     </div>
                 </div>
             `;
-            item.addEventListener('click', () => this.setActiveLight(index));
+            // 添加数据属性以识别索引
+            item.dataset.lightIndex = index;
+            item.addEventListener('click', (e) => {
+                // 添加点击时的日志输出
+                console.log(`[RelightNode] 点击了光源项 ${index}, 当前活动光源: ${this.activeSourceIndex}`);
+                this.setActiveLight(index);
+            });
             const colorPicker = item.querySelector('.light-color-picker');
             colorPicker.addEventListener('input', (e) => {
                 e.stopPropagation();
@@ -847,7 +797,10 @@ class LightEditor {
             listContainer.appendChild(item);
         });
     }
+
     setActiveLight(index) {
+        console.log(`[RelightNode] 设置活动光源: ${index}, 当前光源数量: ${this.lightSources.length}`);
+        
         // 先清除所有光源的选中状态
         this.lightSources.forEach(source => {
             if (source.indicator) {
@@ -864,12 +817,25 @@ class LightEditor {
         if (source && source.indicator) {
             const ring = source.indicator.querySelector('.selection-ring');
             if (ring) {
+                console.log(`[RelightNode] 显示光源 ${index} 的选择环`);
                 ring.style.display = 'block';
+            } else {
+                console.warn(`[RelightNode] 光源 ${index} 没有选择环元素`);
             }
+        } else {
+            console.warn(`[RelightNode] 光源 ${index} 或其指示器不存在`);
         }
 
-        // 更新光源列表
-        this.updateLightSourcesList();
+        // 更新光源列表UI中的活动项
+        const listItems = this.modal.querySelectorAll('.light-source-item');
+        listItems.forEach(item => {
+            const itemIndex = parseInt(item.dataset.lightIndex);
+            if (itemIndex === index) {
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
+        });
 
         // 更新控制面板的值
         if (source) {
@@ -885,14 +851,65 @@ class LightEditor {
                 yValueEl.textContent = source.position.y.toFixed(2);
                 zValueEl.textContent = source.position.z.toFixed(2);
             }
+            
+            // 更新光源类型选择器
+            const lightTypeSelect = this.modal.querySelector('#lightType');
+            if (lightTypeSelect) {
+                lightTypeSelect.value = source.lightType || 'point';
+                
+                // 显示或隐藏聚光灯控制项
+                const spotlightControls = this.modal.querySelectorAll('.spotlight-controls');
+                spotlightControls.forEach(control => {
+                    control.style.display = source.lightType === 'spot' ? 'block' : 'none';
+                });
+                
+                // 显示或隐藏点光源控制项
+                const pointlightControls = this.modal.querySelectorAll('.pointlight-controls');
+                pointlightControls.forEach(control => {
+                    control.style.display = source.lightType === 'point' ? 'block' : 'none';
+                });
+                
+                // 更新聚光灯参数
+                if (source.lightType === 'spot' && source.spotParams) {
+                    const spotlightAngleSlider = this.modal.querySelector('#spotlightAngle');
+                    const spotlightPenumbraSlider = this.modal.querySelector('#spotlightPenumbra');
+                    
+                    if (spotlightAngleSlider) {
+                        spotlightAngleSlider.value = source.spotParams.angle / Math.PI;
+                    }
+                    
+                    if (spotlightPenumbraSlider) {
+                        spotlightPenumbraSlider.value = source.spotParams.penumbra;
+                    }
+                }
+                
+                // 更新点光源参数
+                if (source.lightType === 'point' && source.pointParams) {
+                    const pointlightRadiusSlider = this.modal.querySelector('#pointlightRadius');
+                    
+                    if (pointlightRadiusSlider) {
+                        pointlightRadiusSlider.value = source.pointParams.radius;
+                    }
+                }
+            }
         }
     }
+
     deleteLight(index) {
         const source = this.lightSources[index];
         if (source) {
             this.scene.remove(source.light);
+            if (source.lightType === 'spot' && source.light.target) {
+                this.scene.remove(source.light.target);
+            }
             if (source.indicator && source.indicator.parentNode) {
                 source.indicator.remove();
+            }
+            if (source.connectionLine && source.connectionLine.parentNode) {
+                source.connectionLine.remove();
+            }
+            if (source.targetIndicator && source.targetIndicator.parentNode) {
+                source.targetIndicator.remove();
             }
             this.lightSources.splice(index, 1);
             if (this.activeSourceIndex === index) {
@@ -910,6 +927,7 @@ class LightEditor {
             this.render();
         }
     }
+
     toggleLightVisibility(index) {
         const source = this.lightSources[index];
         if (source) {
@@ -918,6 +936,7 @@ class LightEditor {
             this.render();
         }
     }
+
     updateLightIntensity(index, value) {
         const source = this.lightSources[index];
         if (source) {
@@ -926,6 +945,7 @@ class LightEditor {
             this.render();
         }
     }
+
     render() {
         if (this.displayRenderer && this.renderer && this.scene && this.camera) {
             // 更新显示用的画布
@@ -934,6 +954,7 @@ class LightEditor {
             this.renderer.render(this.scene, this.camera);
         }
     }
+
     async show(nodeId, detail) {
         try {
             this.currentNode = app.graph.getNodeById(nodeId);
@@ -945,13 +966,35 @@ class LightEditor {
             const { bg_image, bg_depth_map, bg_normal_map, has_mask, mask } = detail;
             this.hasMask = has_mask;
             this.modal.showModal();
+            
+            // 清理之前可能存在的光源
+            this.lightSources.forEach(source => {
+                if (this.scene) {
+                    this.scene.remove(source.light);
+                    if (source.lightType === 'spot' && source.light.target) {
+                        this.scene.remove(source.light.target);
+                    }
+                }
+                if (source.indicator && source.indicator.parentNode) {
+                    source.indicator.remove();
+                }
+                if (source.targetIndicator && source.targetIndicator.parentNode) {
+                    source.targetIndicator.remove();
+                }
+                if (source.connectionLine && source.connectionLine.parentNode) {
+                    source.connectionLine.remove();
+                }
+            });
+            this.lightSources = [];
+            this.activeSourceIndex = -1;
+            
             const texturePromises = [
-                this.base64ToTexture(bg_image),
-                this.base64ToTexture(bg_depth_map),
-                this.base64ToTexture(bg_normal_map)
+                SceneUtils.base64ToTexture(bg_image),
+                SceneUtils.base64ToTexture(bg_depth_map),
+                SceneUtils.base64ToTexture(bg_normal_map)
             ];
             if (has_mask && mask) {
-                texturePromises.push(this.base64ToTexture(mask));
+                texturePromises.push(SceneUtils.base64ToTexture(mask));
                 console.log('[RelightNode] 检测到遮罩数据，将加载遮罩纹理');
             }
             const loadedTextures = await Promise.all(texturePromises);
@@ -961,33 +1004,50 @@ class LightEditor {
             const maskTexture = has_mask ? loadedTextures[3] : null;
             console.log('[RelightNode] 纹理加载完成，设置场景...');
             await this.setupScene(texture, depthMap, normalMap, maskTexture);
+            
+            // 移除画布上的所有指示器元素
+            const existingIndicators = this.canvasContainer.querySelectorAll('.light-source-indicator, .spotlight-target-indicator, .spotlight-connection-line');
+            existingIndicators.forEach(indicator => indicator.remove());
+            
             const configRestored = await this.restoreLightConfiguration(nodeId);
             if (!configRestored) {
-                this.lightSources = [];
-                this.activeSourceIndex = -1;
-                const existingIndicators = this.canvasContainer.querySelectorAll('.light-source-indicator');
-                existingIndicators.forEach(indicator => indicator.remove());
+                console.log('[RelightNode] 没有找到已保存的配置，使用空白配置');
+                // 没有恢复到配置，保持空白状态
             }
+            
             if (this.renderer && this.scene && this.camera) {
                 this.renderer.render(this.scene, this.camera);
             }
+            
+            // 重新绑定添加光源按钮事件
             const addLightBtn = this.modal.querySelector('.relight-btn.add-light');
             if (addLightBtn) {
+                // 移除已有的事件监听器，避免重复添加
                 const newAddLightBtn = addLightBtn.cloneNode(true);
                 addLightBtn.parentNode.replaceChild(newAddLightBtn, addLightBtn);
+                
+                // 添加新的事件监听器
                 newAddLightBtn.addEventListener('click', () => {
+                    console.log('[RelightNode] 添加新光源');
                     if (this.scene) {
-                        this.createLightSource();
+                        const newSource = this.createLightSource();
+                        console.log('[RelightNode] 新光源已创建，ID:', newSource.id);
+                        this.updateLightSourcesList();
                     } else {
                         console.error('[RelightNode] 场景未初始化，无法添加光源');
                     }
                 });
             }
-            console.log('[RelightNode] 编辑器显示成功');
+            
+            // 初始化光源列表
+            this.updateLightSourcesList();
+            
+            console.log('[RelightNode] 编辑器显示成功，当前光源数量:', this.lightSources.length);
         } catch (error) {
             console.error('[RelightNode] 处理图像时出错:', error);
         }
     }
+
     updateLightColor(index, color) {
         const source = this.lightSources[index];
         if (source) {
@@ -1024,21 +1084,26 @@ class LightEditor {
             this.render();
         }
     }
+
     saveLightConfiguration(nodeId) {
         const config = {
             lights: this.lightSources.map(source => ({
                 screenX: source.indicator.offsetLeft,
                 screenY: source.indicator.offsetTop,
                 position: { ...source.position },
+                targetPosition: source.targetPosition ? { ...source.targetPosition } : null,
                 intensity: source.intensity,
                 color: source.lightColor,
-                visible: source.light.visible
+                visible: source.light.visible,
+                lightType: source.lightType || 'point',
+                spotParams: source.spotParams || null,
+                pointParams: source.pointParams || null
             })),
             ambientLight: {
                 intensity: this.ambientLight.intensity
             },
             material: {
-                normalScale: this.material.normalScale.x,
+                normalScale: this.normalStrength || 0,
                 shininess: this.material.shininess,
                 specularStrength: this.material.specular.r
             },
@@ -1048,18 +1113,40 @@ class LightEditor {
             this.currentNode.lightConfig = config;
         }
     }
+
     async restoreLightConfiguration(nodeId) {
         const node = app.graph.getNodeById(nodeId);
         if (!node || !node.lightConfig) return false;
         const config = node.lightConfig;
         this.lightSources.forEach(source => {
             this.scene.remove(source.light);
+            if (source.lightType === 'spot' && source.light.target) {
+                this.scene.remove(source.light.target);
+            }
             if (source.indicator && source.indicator.parentNode) {
                 source.indicator.remove();
             }
+            if (source.targetIndicator && source.targetIndicator.parentNode) {
+                source.targetIndicator.remove();
+            }
+            if (source.connectionLine && source.connectionLine.parentNode) {
+                source.connectionLine.remove();
+            }
         });
         this.lightSources = [];
+        
+        // 设置光源类型选择器为默认值
+        const lightTypeSelect = this.modal.querySelector('#lightType');
+        if (lightTypeSelect) {
+            lightTypeSelect.value = 'point';
+        }
+        
         for (const lightConfig of config.lights) {
+            // 临时设置类型选择器的值，这样创建光源时会使用正确的类型
+            if (lightConfig.lightType && lightTypeSelect) {
+                lightTypeSelect.value = lightConfig.lightType;
+            }
+            
             const source = this.createLightSource();
             source.position = { ...lightConfig.position };
             source.light.position.set(
@@ -1070,15 +1157,63 @@ class LightEditor {
             source.intensity = lightConfig.intensity;
             source.light.intensity = lightConfig.intensity;
             source.light.visible = lightConfig.visible;
+            source.lightType = lightConfig.lightType || 'point';
+            
+            // 恢复聚光灯参数
+            if (source.lightType === 'spot' && lightConfig.spotParams) {
+                source.spotParams = { ...lightConfig.spotParams };
+                source.light.angle = lightConfig.spotParams.angle;
+                source.light.penumbra = lightConfig.spotParams.penumbra;
+                
+                // 恢复目标点位置
+                if (lightConfig.targetPosition) {
+                    source.targetPosition = { ...lightConfig.targetPosition };
+                    source.light.target.position.set(
+                        lightConfig.targetPosition.x,
+                        lightConfig.targetPosition.y,
+                        lightConfig.targetPosition.z
+                    );
+                } else {
+                    // 如果没有保存目标点，使用默认位置
+                    source.targetPosition = {
+                        x: lightConfig.position.x,
+                        y: lightConfig.position.y - 1,
+                        z: 0
+                    };
+                    source.light.target.position.set(
+                        source.targetPosition.x,
+                        source.targetPosition.y,
+                        source.targetPosition.z
+                    );
+                }
+            }
+            
+            // 恢复点光源参数
+            if (source.lightType === 'point' && lightConfig.pointParams) {
+                source.pointParams = { ...lightConfig.pointParams };
+                source.light.distance = lightConfig.pointParams.radius;
+            }
+            
             if (lightConfig.color) {
                 this.updateLightColor(this.lightSources.length - 1, lightConfig.color);
             }
+            
             if (this.canvasContainer && source.indicator) {
                 source.indicator.style.left = `${lightConfig.screenX}px`;
                 source.indicator.style.top = `${lightConfig.screenY}px`;
                 source.indicator.style.opacity = lightConfig.visible ? '0.7' : '0.2';
+                
+                // 立即更新聚光灯连接线
+                if (source.lightType === 'spot') {
+                    // 确保DOM元素已完全加载并计算好尺寸
+                    setTimeout(() => {
+                        this.updateSpotlightLine(source);
+                        console.log('[RelightNode] 更新聚光灯连接线:', source.name);
+                    }, 50);
+                }
             }
         }
+        
         if (config.ambientLight && this.ambientLight) {
             this.ambientLight.intensity = config.ambientLight.intensity;
             const ambientLightSlider = this.modal.querySelector('#ambientLight');
@@ -1087,31 +1222,24 @@ class LightEditor {
             }
         }
         if (config.material && this.material) {
+            // 恢复法线强度
             if (config.material.normalScale !== undefined) {
-                this.material.normalScale.set(config.material.normalScale, config.material.normalScale);
+                this.normalStrength = config.material.normalScale;
+                this.material.normalScale.set(this.normalStrength, this.normalStrength);
+                
                 const normalStrengthSlider = this.modal.querySelector('#normalStrength');
                 if (normalStrengthSlider) {
-                    normalStrengthSlider.value = config.material.normalScale;
+                    normalStrengthSlider.value = this.normalStrength;
                 }
+            } else {
+                // 默认设置为0
+                this.material.normalScale.set(0, 0);
+                this.normalStrength = 0;
             }
-            if (config.material.shininess !== undefined) {
-                this.material.shininess = config.material.shininess;
-                const shininessSlider = this.modal.querySelector('#shininess');
-                if (shininessSlider) {
-                    shininessSlider.value = config.material.shininess;
-                }
-            }
-            if (config.material.specularStrength !== undefined) {
-                this.material.specular.setRGB(
-                    config.material.specularStrength,
-                    config.material.specularStrength,
-                    config.material.specularStrength
-                );
-                const specularStrengthSlider = this.modal.querySelector('#specularStrength');
-                if (specularStrengthSlider) {
-                    specularStrengthSlider.value = config.material.specularStrength;
-                }
-            }
+            
+            // 恢复其他材质参数，但固定为0
+            this.material.shininess = 0;
+            this.material.specular.setRGB(0, 0, 0);
         }
         if (config.zOffset !== undefined) {
             this.zOffset = config.zOffset;
@@ -1120,49 +1248,21 @@ class LightEditor {
                 zOffsetSlider.value = config.zOffset;
             }
         }
+        
+        // 确保所有聚光灯连接线都更新
+        setTimeout(() => {
+            this.lightSources.forEach(source => {
+                if (source.lightType === 'spot') {
+                    this.updateSpotlightLine(source);
+                }
+            });
+        }, 100);
+        
         this.updateLightSourcesList();
         this.render();
         return true;
     }
-    createMaskedMaterial(baseTexture, depthMap, normalMap, maskTexture) {
-        console.log('[RelightNode] 创建带遮罩的材质');
-        const material = new THREE.MeshPhongMaterial({
-            map: baseTexture,
-            normalMap: normalMap,
-            normalScale: new THREE.Vector2(1, 1),
-            displacementMap: depthMap,
-            displacementScale: 0.3,
-            shininess: 30,
-            specular: new THREE.Color(0x444444)
-        });
-        material.onBeforeCompile = (shader) => {
-            shader.uniforms.maskTexture = { value: maskTexture };
-            shader.fragmentShader = shader.fragmentShader.replace(
-                'uniform float opacity;',
-                'uniform float opacity;\nuniform sampler2D maskTexture;'
-            );
-            shader.fragmentShader = shader.fragmentShader.replace(
-                '#include <color_fragment>',
-                `
-                #include <color_fragment>
-                float maskValue = texture2D(maskTexture, vUv).r;
-                vec3 originalColor = diffuseColor.rgb;
-                reflectedLight.directDiffuse *= maskValue;
-                reflectedLight.directSpecular *= maskValue;
-                reflectedLight.indirectDiffuse *= maskValue;
-                reflectedLight.indirectSpecular *= maskValue;
-                `
-            );
-            shader.fragmentShader = shader.fragmentShader.replace(
-                'gl_FragColor = vec4( outgoingLight, diffuseColor.a );',
-                `
-                vec3 finalColor = mix(originalColor, outgoingLight, maskValue);
-                gl_FragColor = vec4(finalColor, diffuseColor.a);
-                `
-            );
-        };
-        return material;
-    }
+
     async processWithoutDialog(nodeId, detail) {
         try {
             this.currentNode = app.graph.getNodeById(nodeId);
@@ -1177,13 +1277,13 @@ class LightEditor {
             
             // 加载纹理
             const texturePromises = [
-                this.base64ToTexture(bg_image),
-                this.base64ToTexture(bg_depth_map),
-                this.base64ToTexture(bg_normal_map)
+                SceneUtils.base64ToTexture(bg_image),
+                SceneUtils.base64ToTexture(bg_depth_map),
+                SceneUtils.base64ToTexture(bg_normal_map)
             ];
             
             if (has_mask && mask) {
-                texturePromises.push(this.base64ToTexture(mask));
+                texturePromises.push(SceneUtils.base64ToTexture(mask));
             }
             
             const loadedTextures = await Promise.all(texturePromises);
@@ -1251,6 +1351,7 @@ class LightEditor {
             console.error('[RelightNode] 无弹窗处理错误:', error);
         }
     }
+
     async setupTemporaryScene(texture, depthMap, normalMap, maskTexture = null) {
         // 类似setupScene但简化版本，仅用于无弹窗处理
         try {
@@ -1273,13 +1374,16 @@ class LightEditor {
             
             // 创建或更新几何体
             const geometry = new THREE.PlaneGeometry(2 * imageAspect, 2, 32, 32);
-            let material;
+            
+            // 获取法线强度值（如果已存在）
+            this.normalStrength = this.normalStrength || 0;
             
             // 创建材质
+            let material;
             if (maskTexture) {
-                material = this.createMaskedMaterial(texture, depthMap, normalMap, maskTexture);
+                material = SceneUtils.createMaskedMaterial(texture, depthMap, normalMap, maskTexture, this.normalStrength);
             } else {
-                material = this.createSimpleMaterial(texture, depthMap, normalMap);
+                material = SceneUtils.createSimpleMaterial(texture, depthMap, normalMap, this.normalStrength);
             }
             
             // 更新或创建网格
@@ -1302,9 +1406,13 @@ class LightEditor {
             return false;
         }
     }
+
     createDefaultLight() {
         this.lightSources.forEach(source => {
             this.scene.remove(source.light);
+            if (source.lightType === 'spot' && source.light.target) {
+                this.scene.remove(source.light.target);
+            }
         });
         this.lightSources = [];
         
@@ -1316,7 +1424,11 @@ class LightEditor {
             position: { x: 0, y: 0, z: 1.0 },
             intensity: 1.0,
             lightColor: '#ffffff',
-            visible: true
+            visible: true,
+            lightType: 'point',
+            pointParams: {
+                radius: 10
+            }
         };
         
         // 直接设置点光源位置
@@ -1330,214 +1442,53 @@ class LightEditor {
         
         return defaultLight;
     }
-    getZValueFromDepthMap(x, y) {
-        // 默认Z值，当无法从深度图获取时使用
-        const defaultZ = 1.0;
+
+    createTargetIndicator(color) {
+        const indicator = document.createElement('div');
+        indicator.className = 'spotlight-target-indicator';
+        indicator.style.backgroundColor = color;
+        return indicator;
+    }
+
+    updateSpotlightLine(source) {
+        if (!source.connectionLine || !source.indicator || !source.targetPosition) return;
         
-        try {
-            if (!this.depthMapTexture || !this.depthMapTexture.image) {
-                return defaultZ + this.zOffset;
-            }
-            
-            // 创建临时画布以便于读取深度图像素
-            if (!this.depthMapCanvas) {
-                this.depthMapCanvas = document.createElement('canvas');
-                this.depthMapContext = this.depthMapCanvas.getContext('2d');
-            }
-            
-            const img = this.depthMapTexture.image;
-            this.depthMapCanvas.width = img.width;
-            this.depthMapCanvas.height = img.height;
-            this.depthMapContext.drawImage(img, 0, 0);
-            
-            // 计算图像上的坐标
-            const pixelX = Math.floor(x * img.width);
-            const pixelY = Math.floor(y * img.height);
-            
-            // 获取像素数据
-            try {
-                const pixelData = this.depthMapContext.getImageData(pixelX, pixelY, 1, 1).data;
-                // 从灰度值计算深度（0-255转为0.1-2.0范围）
-                // 通常深度图白色表示更近，黑色表示更远
-                const depth = pixelData[0] / 255; // 使用红色通道作为深度值
-                
-                // 转换为z轴范围，并添加偏移量
-                const zValue = 1 + depth * 1 + this.zOffset;
-                return zValue;
-            } catch (error) {
-                console.error('[RelightNode] 读取深度图像素失败:', error);
-                return defaultZ + this.zOffset;
-            }
-        } catch (error) {
-            console.error('[RelightNode] 获取Z值时出错:', error);
-            return defaultZ + this.zOffset;
+        const lightRect = source.indicator.getBoundingClientRect();
+        const canvasRect = this.canvasContainer.getBoundingClientRect();
+        
+        // 计算光源中心点
+        const lightX = lightRect.left + lightRect.width/2 - canvasRect.left;
+        const lightY = lightRect.top + lightRect.height/2 - canvasRect.top;
+        
+        // 如果有目标点指示器，使用它的位置
+        let targetX, targetY;
+        if (source.targetIndicator && source.targetIndicator.style.display !== 'none') {
+            const targetRect = source.targetIndicator.getBoundingClientRect();
+            targetX = targetRect.left + targetRect.width/2 - canvasRect.left;
+            targetY = targetRect.top + targetRect.height/2 - canvasRect.top;
+        } else {
+            // 否则使用目标点在3D空间中的位置计算屏幕位置
+            // 这需要将3D空间点投影到屏幕空间
+            // 简化处理：用已有信息估算
+            const displayRect = this.displayRenderer.domElement.getBoundingClientRect();
+            const targetPosNormalized = {
+                x: (source.targetPosition.x + 1) / 2,
+                y: (1 - source.targetPosition.y) / 2
+            };
+            targetX = displayRect.left + displayRect.width * targetPosNormalized.x - canvasRect.left;
+            targetY = displayRect.top + displayRect.height * targetPosNormalized.y - canvasRect.top;
         }
+        
+        // 计算线段长度和角度
+        const length = Math.sqrt(Math.pow(targetX - lightX, 2) + Math.pow(targetY - lightY, 2));
+        const angle = Math.atan2(targetY - lightY, targetX - lightX) * 180 / Math.PI;
+        
+        // 设置线段样式
+        source.connectionLine.style.width = `${length}px`;
+        source.connectionLine.style.left = `${lightX}px`;
+        source.connectionLine.style.top = `${lightY}px`;
+        source.connectionLine.style.transform = `rotate(${angle}deg)`;
+        source.connectionLine.style.transformOrigin = 'left center';
+        source.connectionLine.style.display = 'block';
     }
 }
-app.registerExtension({
-    name: "LG_Relight_Ultra",
-    async setup() {
-        console.log('[RelightNode] 开始初始化扩展...');
-        if (!window.THREE) {
-            console.log('[RelightNode] 正在加载 Three.js...');
-            await new Promise((resolve, reject) => {
-                const script = document.createElement('script');
-                script.src = relightConfig.libraryUrl;
-                script.onload = () => {
-                    console.log('[RelightNode] Three.js 加载成功');
-                    resolve();
-                };
-                script.onerror = (error) => {
-                    console.error('[RelightNode] Three.js 加载失败:', error);
-                    reject(error);
-                };
-                document.head.appendChild(script);
-            });
-        }
-        const lightEditor = new LightEditor();
-        api.addEventListener("relight_image", async ({ detail }) => {
-            try {
-                const { node_id, skip_dialog } = detail;
-                console.log('[RelightNode] 处理节点:', node_id);
-                
-                if (skip_dialog) {
-                    // 跳过弹窗，直接使用现有配置进行处理
-                    await lightEditor.processWithoutDialog(node_id, detail);
-                } else {
-                    // 显示弹窗让用户编辑
-                    await lightEditor.show(node_id, detail);
-                }
-            } catch (error) {
-                console.error('[RelightNode] 处理错误:', error);
-            }
-        });
-    },
-    async beforeRegisterNodeDef(nodeType, nodeData) {
-        if (nodeType.comfyClass === "LG_Relight_Ultra") {
-            console.log('[RelightNode] 注册节点定义...');
-            const originalOnAdded = nodeType.prototype.onAdded;
-            const originalOnNodeCreated = nodeType.prototype.onNodeCreated;
-            const originalOnRemoved = nodeType.prototype.onRemoved;
-            const originalOnClearError = nodeType.prototype.onClearError;
-            nodeType.prototype.onAdded = function() {
-                console.log('[RelightNode] 节点添加到画布, ID:', this.id);
-                if (originalOnAdded) {
-                    return originalOnAdded.apply(this, arguments);
-                }
-            };
-            nodeType.prototype.onNodeCreated = function() {
-                if (originalOnNodeCreated) {
-                    originalOnNodeCreated.apply(this, arguments);
-                }
-                this.hasFixedSeed = false;
-                const seedWidget = this.addWidget(
-                    "number",
-                    "seed",
-                    0,
-                    (value) => {
-                        this.seed = value;
-                    },
-                    {
-                        min: 0,
-                        max: Number.MAX_SAFE_INTEGER,
-                        step: 1,
-                        precision: 0
-                    }
-                );
-                const seed_modeWidget = this.addWidget(
-                    "combo",
-                    "seed_mode",
-                    "randomize",
-                    () => {},
-                    {
-                        values: ["fixed", "increment", "decrement", "randomize"],
-                        serialize: false
-                    }
-                );
-                seed_modeWidget.beforeQueued = () => {
-                    const mode = seed_modeWidget.value;
-                    let newValue = seedWidget.value;
-                    if (mode === "randomize") {
-                        newValue = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
-                    } else if (mode === "increment") {
-                        newValue += 1;
-                    } else if (mode === "decrement") {
-                        newValue -= 1;
-                    } else if (mode === "fixed") {
-                        if (!this.hasFixedSeed) {
-                            newValue = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
-                            this.hasFixedSeed = true;
-                        }
-                    }
-                    seedWidget.value = newValue;
-                    this.seed = newValue;
-                };
-                seed_modeWidget.callback = (value) => {
-                    if (value !== "fixed") {
-                        this.hasFixedSeed = false;
-                    }
-                };
-                const updateButton = this.addWidget("button", "更新种子", null, () => {
-                    const mode = seed_modeWidget.value;
-                    let newValue = seedWidget.value;
-                    if (mode === "randomize") {
-                        newValue = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
-                    } else if (mode === "increment") {
-                        newValue += 1;
-                    } else if (mode === "decrement") {
-                        newValue -= 1;
-                    } else if (mode === "fixed") {
-                        newValue = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
-                        this.hasFixedSeed = true;
-                    }
-                    seedWidget.value = newValue;
-                    seedWidget.callback(newValue);
-                    console.log('[RelightNode] 种子已更新为:', newValue);
-                });
-                nodeType.prototype.resetLightConfig = function() {
-                    if (this.lightConfig) {
-                        delete this.lightConfig;
-                    }
-                    const defaultValues = {
-                        'lightZ': 2.0,
-                        'lightIntensity': 1.0,
-                        'ambientLight': 0.2,
-                        'normalStrength': 1.0,
-                        'specularStrength': 0.2,
-                        'shininess': 0
-                    };
-                    const modal = document.getElementById('relight-editor-modal');
-                    if (modal) {
-                        Object.entries(defaultValues).forEach(([id, value]) => {
-                            const slider = modal.querySelector(`#${id}`);
-                            if (slider) {
-                                slider.value = value;
-                                const event = new Event('input', { bubbles: true });
-                                slider.dispatchEvent(event);
-                            }
-                        });
-                        const lightSourcesList = modal.querySelector('.light-sources-list');
-                        if (lightSourcesList) {
-                            lightSourcesList.innerHTML = '';
-                        }
-                        const indicators = modal.querySelectorAll('.light-source-indicator');
-                        indicators.forEach(indicator => indicator.remove());
-                    }
-                    console.log('[RelightNode] 光照配置和UI已重置');
-                };
-                nodeType.prototype.onRemoved = function() {
-                    this.resetLightConfig();
-                    if (originalOnRemoved) {
-                        return originalOnRemoved.apply(this, arguments);
-                    }
-                };
-                nodeType.prototype.onClearError = function() {
-                    this.resetLightConfig();
-                    if (originalOnClearError) {
-                        return originalOnClearError.apply(this, arguments);
-                    }
-                };
-            }
-        }
-    }
-});
