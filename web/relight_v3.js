@@ -78,12 +78,22 @@ style.textContent = `
         border-radius: 8px;
         padding: 0;
         background: #2a2a2a;
+        width: 90vw;
+        height: 90vh;
         max-width: 90vw;
-        max-height: 100vh;
+        max-height: 90vh;
+        margin: 0;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+    dialog::backdrop {
+        background-color: rgba(0, 0, 0, 0.5);
     }
     .relight-container {
-        width: 800px;
-        height: auto;
+        width: 100%;
+        height: 100%;
         display: flex;
         flex-direction: column;
     }
@@ -91,7 +101,7 @@ style.textContent = `
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 10px 20px;
+        padding: 8px 16px;
         background: #333;
         border-bottom: 1px solid #444;
     }
@@ -107,11 +117,11 @@ style.textContent = `
         cursor: pointer;
     }
     .relight-content {
-        padding: 20px;
+        padding: 0;
         display: flex;
-        flex-direction: column;
-        gap: 20px;
-        overflow: auto;
+        flex-direction: row;
+        height: calc(100% - 44px);
+        overflow: hidden;
     }
     .relight-preview {
         position: relative;
@@ -121,34 +131,42 @@ style.textContent = `
         flex-direction: column;
         justify-content: center;
         align-items: center;
-        min-height: 400px;
+        flex: 1;
+        height: 100%;
         cursor: crosshair;
     }
     #relight-canvas {
         max-width: 100%;
-        max-height: 60vh;
+        max-height: 100%;
         object-fit: contain;
     }
     .relight-controls {
         display: flex;
         flex-direction: column;
-        gap: 15px;
+        justify-content: space-between;
+        width: 300px;
+        padding: 20px;
+        height: 100%;
+        box-sizing: border-box;
+        background: #2a2a2a;
+        overflow-y: visible;
     }
     .slider-group {
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 16px;
     }
     .control-row {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
     }
     .control-row label {
-        min-width: 140px;
+        min-width: 100px;
+        white-space: nowrap;
     }
     .control-row input[type="range"] {
-        flex: 1;
+        width: 120px;
     }
     .reset-btn, .reset-color-btn {
         padding: 2px 8px;
@@ -157,31 +175,36 @@ style.textContent = `
         border-radius: 4px;
         color: white;
         cursor: pointer;
+        white-space: nowrap;
     }
     .bottom-controls {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-top: 15px;
+        margin-top: 30px;
     }
     .color-controls {
         display: flex;
-        gap: 20px;
+        flex-direction: column;
+        gap: 15px;
+        margin-bottom: 20px;
     }
     .color-row {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
+    }
+    .color-row label {
+        min-width: 80px;
     }
     .action-buttons {
         display: flex;
         gap: 10px;
+        justify-content: center;
     }
     .action-buttons button {
         padding: 8px 16px;
         border: none;
         border-radius: 4px;
         cursor: pointer;
+        min-width: 80px;
     }
     #apply-relight {
         background: #2a8af6;
@@ -299,7 +322,7 @@ class RelightProcessor {
         const rect = this.canvas.getBoundingClientRect();
         const centerX = rect.width / 2;
         const centerY = rect.height / 2;
-        const x = -(e.clientX - rect.left - centerX) / centerX;
+        const x = (e.clientX - rect.left - centerX) / centerX;
         const y = -(e.clientY - rect.top - centerY) / centerY;
         this.values.x = Math.max(-1, Math.min(1, x));
         this.values.y = Math.max(-1, Math.min(1, y));
