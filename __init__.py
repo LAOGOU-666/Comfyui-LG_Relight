@@ -11,7 +11,7 @@ import torch.nn.functional as F
 from threading import Event
 image_cache = {}
 event_dict = {}
-
+CATEGORY_TYPE = "🎈LAOGOU/Relight"
 class LG_Relight_Basic:
 
     @classmethod
@@ -75,7 +75,7 @@ class LG_Relight_Basic:
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "relight"
-    CATEGORY = "🎈LAOGOU"
+    CATEGORY = CATEGORY_TYPE
 
     def relight(self, image, normals, x, y, z, brightness, 
               shadow_range, shadow_strength, highlight_range, highlight_strength,
@@ -164,7 +164,7 @@ class LG_Relight:
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "relight"
-    CATEGORY = "🎈LAOGOU"
+    CATEGORY = CATEGORY_TYPE
     OUTPUT_NODE = True
 
     def encode_image_to_base64(self, image, is_mask=False):
@@ -295,7 +295,7 @@ class LG_Relight_Ultra:
     
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "relight_image"
-    CATEGORY = "🎈LAOGOU"
+    CATEGORY = CATEGORY_TYPE
 
     def relight_image(self, bg_img, bg_depth_map, bg_normal_map, wait_timeout, unique_id, mask=None, skip_dialog=False):
         try:
