@@ -2,22 +2,23 @@ import { api } from '../../../scripts/api.js'
 import { app } from '../../../scripts/app.js'
 import { relightConfig } from './config.js'
 import { LightEditor } from './light_editor.js'
+import { t } from '../i18n.js'
 
 app.registerExtension({
     name: "LG_Relight_Ultra",
     async setup() {
-        console.log('[RelightNode] 开始初始化扩展...');
+        console.log('[RelightNode] ' + t('开始初始化扩展...'));
         if (!window.THREE) {
-            console.log('[RelightNode] 正在加载 Three.js...');
+            console.log('[RelightNode] ' + t('正在加载 Three.js...'));
             await new Promise((resolve, reject) => {
                 const script = document.createElement('script');
                 script.src = relightConfig.libraryUrl;
                 script.onload = () => {
-                    console.log('[RelightNode] Three.js 加载成功');
+                    console.log('[RelightNode] ' + t('Three.js 加载成功'));
                     resolve();
                 };
                 script.onerror = (error) => {
-                    console.error('[RelightNode] Three.js 加载失败:', error);
+                    console.error('[RelightNode] ' + t('Three.js 加载失败:') , error);
                     reject(error);
                 };
                 document.head.appendChild(script);
@@ -27,23 +28,23 @@ app.registerExtension({
         api.addEventListener("relight_image", async ({ detail }) => {
             try {
                 const { node_id, skip_dialog } = detail;
-                console.log('[RelightNode] 处理节点:', node_id);
-                
+                console.log('[RelightNode] ' + t('处理节点:') , node_id);
+
                 if (skip_dialog) {
                     // 跳过弹窗，直接使用现有配置进行处理
                     await lightEditor.processWithoutDialog(node_id, detail);
                 } else {
                     // 显示弹窗让用户编辑
                     await lightEditor.show(node_id, detail);
-                    
+
                     // 添加聚光灯操作提示
                     const canvasContainer = document.querySelector('.relight-canvas-container');
                     if (canvasContainer) {
                         const spotlightHint = document.createElement('div');
                         spotlightHint.className = 'spotlight-hint';
-                        spotlightHint.textContent = '聚光灯模式: 左键拖动移动光源位置，右键点击设置照射目标方向';
+                        spotlightHint.textContent = t('聚光灯模式: 左键拖动移动光源位置，右键点击设置照射目标方向');
                         canvasContainer.appendChild(spotlightHint);
-                        
+
                         // 禁用右键菜单以便使用右键点击
                         canvasContainer.addEventListener('contextmenu', (e) => {
                             e.preventDefault();
@@ -52,19 +53,19 @@ app.registerExtension({
                     }
                 }
             } catch (error) {
-                console.error('[RelightNode] 处理错误:', error);
+                console.error('[RelightNode] ' + t('处理错误:') , error);
             }
         });
     },
     async beforeRegisterNodeDef(nodeType, nodeData) {
         if (nodeType.comfyClass === "LG_Relight_Ultra") {
-            console.log('[RelightNode] 注册节点定义...');
+            console.log('[RelightNode] ' + t('注册节点定义...'));
             const originalOnAdded = nodeType.prototype.onAdded;
             const originalOnNodeCreated = nodeType.prototype.onNodeCreated;
             const originalOnRemoved = nodeType.prototype.onRemoved;
             const originalOnClearError = nodeType.prototype.onClearError;
             nodeType.prototype.onAdded = function() {
-                console.log('[RelightNode] 节点添加到画布, ID:', this.id);
+                console.log('[RelightNode] ' + t('节点添加到画布, ID:') , this.id);
                 if (originalOnAdded) {
                     return originalOnAdded.apply(this, arguments);
                 }
@@ -121,7 +122,7 @@ app.registerExtension({
                         this.hasFixedSeed = false;
                     }
                 };
-                const updateButton = this.addWidget("button", "更新种子", null, () => {
+                const updateButton = this.addWidget("button", t("更新种子"), null, () => {
                     const mode = seed_modeWidget.value;
                     let newValue = seedWidget.value;
                     if (mode === "randomize") {
@@ -136,9 +137,9 @@ app.registerExtension({
                     }
                     seedWidget.value = newValue;
                     seedWidget.callback(newValue);
-                    console.log('[RelightNode] 种子已更新为:', newValue);
+                    console.log('[RelightNode] ' + t('种子已更新为:') , newValue);
                 });
-                
+
                 // 默认光照设置
                 this.defaultLightConfig = {
                     lightType: 'point', // 'point' 或 'spot'
@@ -153,7 +154,7 @@ app.registerExtension({
                         penumbra: 0.2
                     }
                 };
-                
+
                 nodeType.prototype.resetLightConfig = function() {
                     if (this.lightConfig) {
                         delete this.lightConfig;
@@ -178,7 +179,7 @@ app.registerExtension({
                                 slider.dispatchEvent(event);
                             }
                         });
-                        
+
                         // 重置光源类型选择器
                         const lightTypeSelect = modal.querySelector('#lightType');
                         if (lightTypeSelect) {
@@ -186,7 +187,7 @@ app.registerExtension({
                             const event = new Event('change', { bubbles: true });
                             lightTypeSelect.dispatchEvent(event);
                         }
-                        
+
                         // 重置光源列表
                         const lightSourcesList = modal.querySelector('.light-sources-list');
                         if (lightSourcesList) {
@@ -194,23 +195,23 @@ app.registerExtension({
                         }
                         const indicators = modal.querySelectorAll('.light-source-indicator, .spotlight-target-indicator, .spotlight-connection-line');
                         indicators.forEach(indicator => indicator.remove());
-                        
+
                         // 移除操作提示
                         const spotlightHint = modal.querySelector('.spotlight-hint');
                         if (spotlightHint) {
                             spotlightHint.remove();
                         }
                     }
-                    console.log('[RelightNode] 光照配置和UI已重置');
+                    console.log('[RelightNode] ' + t('光照配置和UI已重置'));
                 };
-                
+
                 nodeType.prototype.onRemoved = function() {
                     this.resetLightConfig();
                     if (originalOnRemoved) {
                         return originalOnRemoved.apply(this, arguments);
                     }
                 };
-                
+
                 nodeType.prototype.onClearError = function() {
                     this.resetLightConfig();
                     if (originalOnClearError) {
