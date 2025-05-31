@@ -2,6 +2,7 @@ import { api } from '../../../scripts/api.js'
 import { app } from '../../../scripts/app.js'
 import { createRelightModal, modalStyles } from './config.js'
 import { SceneUtils } from './scene_utils.js'
+import { t } from './i18n.js';
 
 export class LightEditor {
     constructor() {
