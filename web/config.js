@@ -1,406 +1,196 @@
-import { api } from '../../../scripts/api.js'
-import { app } from '../../../scripts/app.js'
+import { t } from "./i18n.js"; // Importa el helper de traducción
 
-export const relightConfig = {
-    nodeName: "LG_Relight_Ultra",
-    libraryName: "ThreeJS",
-    libraryUrl: "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js",
-    defaultSize: 512,
-    routes: {
-        uploadEndpoint: "/lg_relight/upload_result",
-        dataEvent: "relight_image"
+export class SceneUtils {
+    static base64ToTexture(base64String) {
+        return new Promise((resolve) => {
+            const texture = new THREE.Texture();
+            const img = new Image();
+            img.src = `data:image/png;base64,${base64String}`;
+            img.onload = () => {
+                texture.image = img;
+                texture.needsUpdate = true;
+                resolve(texture);
+            };
+        });
     }
-};
 
-export function createRelightModal() {
-    const modal = document.createElement("dialog");
-    modal.id = "relight-editor-modal";
-    modal.innerHTML = `
-        <div class="relight-modal-content">
-            <div class="relight-modal-header">
-                <div class="relight-modal-title">光照重建 - 3D打光</div>
-            </div>
-            <div class="relight-modal-body">
-                <div class="relight-canvas-container">
-                    <div class="light-source-indicator"></div>
-                    <div class="light-source-hint">点击或拖动图像设置光源位置</div>
-                </div>
-                <div class="relight-controls">
-                    <div class="relight-control-group">
-                        <h3>光照设置</h3>
-                        <div class="relight-control-item">
-                            <label>光照位置: X: <span class="light-x-value">0.0</span>, Y: <span class="light-y-value">0.0</span>, Z: <span class="light-z-value">1.0</span></label>
-                        </div>
-                        <div class="relight-control-item">
-                            <label>Z轴偏移</label>
-                            <input type="range" class="relight-slider" id="zOffset" min="-1" max="1" step="0.05" value="0">
-                        </div>
-                        <div class="relight-control-item">
-                            <label>光照强度</label>
-                            <input type="range" class="relight-slider" id="lightIntensity" min="0" max="5" step="0.1" value="1.0">
-                            <div class="light-intensity-indicator"></div>
-                        </div>
-                        <div class="relight-control-item">
-                            <label>环境光强度</label>
-                            <input type="range" class="relight-slider" id="ambientLight" min="0" max="1" step="0.05" value="0.2">
-                        </div>
-                        <div class="relight-control-item">
-                            <label>法线强度</label>
-                            <input type="range" class="relight-slider" id="normalStrength" min="0" max="2" step="0.1" value="0">
-                        </div>
-                        <div class="relight-control-item light-type-selector">
-                            <label>光源类型</label>
-                            <select id="lightType" class="relight-select">
-                                <option value="point">点光源</option>
-                                <option value="spot">聚光灯</option>
-                            </select>
-                        </div>
-                        <div class="relight-control-item pointlight-controls">
-                            <label>光源半径</label>
-                            <input type="range" class="relight-slider" id="pointlightRadius" min="1" max="20" step="0.5" value="10">
-                        </div>
-                        <div class="relight-control-item spotlight-controls" style="display: none;">
-                            <label>聚光灯角度</label>
-                            <input type="range" class="relight-slider" id="spotlightAngle" min="0.1" max="1.0" step="0.01" value="0.5">
-                        </div>
-                        <div class="relight-control-item spotlight-controls" style="display: none;">
-                            <label>聚光灯衰减</label>
-                            <input type="range" class="relight-slider" id="spotlightPenumbra" min="0" max="1" step="0.05" value="0.2">
-                        </div>
-                    </div>
-                    <div class="relight-control-group">
-                        <h3>光源管理</h3>
-                        <div class="light-sources-list">
-                            <!-- 这里会动态添加光源项 -->
-                        </div>
-                        <button class="relight-btn add-light">添加光源</button>
-                    </div>
-                </div>
-            </div>
-            <div class="relight-buttons">
-                <button class="relight-btn cancel">取消</button>
-                <button class="relight-btn apply">应用</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-    return modal;
+    static createSimpleMaterial(baseTexture, depthMap, normalMap, normalScale = 0) {
+        return new THREE.MeshPhongMaterial({
+            map: baseTexture,
+            normalMap: normalMap,
+            normalScale: new THREE.Vector2(normalScale, normalScale),
+            displacementMap: depthMap,
+            displacementScale: 0.3,
+            shininess: 0,
+            specular: new THREE.Color(0)
+        });
+    }
+
+    static adjustSpotlightDirection(spotlight, targetPoint) {
+        // Ensure the target point is set and updated
+        if (targetPoint) {
+            spotlight.target.position.copy(targetPoint);
+        }
+        
+        // Make sure the target is added to the scene to work properly
+        if (!spotlight.target.parent) {
+            console.log('[RelightNode] ' + t("聚光灯目标未添加到场景中，请在创建聚光灯后调用 scene.add(spotlight.target)"));
+        }
+        
+        spotlight.target.updateMatrixWorld();
+    }
+
+    static calculateSpotlightDirection(spotlightPos, targetPos) {
+        // Calculate direction vector from spotlight position to target position
+        const direction = new THREE.Vector3(
+            targetPos.x - spotlightPos.x,
+            targetPos.y - spotlightPos.y,
+            targetPos.z - spotlightPos.z
+        );
+        
+        // Normalize direction vector
+        direction.normalize();
+        
+        return direction;
+    }
+
+    static visualizeSpotlight(scene, spotlight, color = 0xffffff, segments = 8) {
+        // Remove previous visual helper
+        if (spotlight.visualHelper) {
+            scene.remove(spotlight.visualHelper);
+        }
+        
+        // Create cone geometry for spotlight visualization
+        const angle = spotlight.angle;
+        const distance = spotlight.distance || 10;
+        
+        // Calculate cone top radius
+        const radius = Math.tan(angle) * distance;
+        
+        // Create cone geometry
+        const geometry = new THREE.ConeGeometry(radius, distance, segments, 1, true);
+        geometry.rotateX(Math.PI);
+        
+        // Create material
+        const material = new THREE.MeshBasicMaterial({
+            color: color,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.3
+        });
+        
+        // Create mesh
+        const cone = new THREE.Mesh(geometry, material);
+        
+        // Set position to spotlight position
+        cone.position.copy(spotlight.position);
+        
+        // Get direction
+        const target = new THREE.Vector3(
+            spotlight.target.position.x,
+            spotlight.target.position.y,
+            spotlight.target.position.z
+        );
+        
+        // Calculate direction from spotlight to target
+        const direction = this.calculateSpotlightDirection(
+            {x: spotlight.position.x, y: spotlight.position.y, z: spotlight.position.z},
+            {x: target.x, y: target.y, z: target.z}
+        );
+        
+        // Make cone look at target
+        cone.lookAt(target);
+        
+        // Store visual helper
+        spotlight.visualHelper = cone;
+        
+        // Add to scene
+        scene.add(cone);
+        
+        return cone;
+    }
+
+    static createMaskedMaterial(baseTexture, depthMap, normalMap, maskTexture, normalScale = 1.0) {
+        console.log('[RelightNode] ' + t("创建带遮罩的材质"));
+        const material = new THREE.MeshPhongMaterial({
+            map: baseTexture,
+            normalMap: normalMap,
+            normalScale: new THREE.Vector2(normalScale, normalScale),
+            displacementMap: depthMap,
+            displacementScale: 0.3,
+            shininess: 30,
+            specular: new THREE.Color(0x444444)
+        });
+        material.onBeforeCompile = (shader) => {
+            shader.uniforms.maskTexture = { value: maskTexture };
+            shader.fragmentShader = shader.fragmentShader.replace(
+                'uniform float opacity;',
+                'uniform float opacity;\nuniform sampler2D maskTexture;'
+            );
+            shader.fragmentShader = shader.fragmentShader.replace(
+                '#include <color_fragment>',
+                `
+                #include <color_fragment>
+                float maskValue = texture2D(maskTexture, vUv).r;
+                vec3 originalColor = diffuseColor.rgb;
+                reflectedLight.directDiffuse *= maskValue;
+                reflectedLight.directSpecular *= maskValue;
+                reflectedLight.indirectDiffuse *= maskValue;
+                reflectedLight.indirectSpecular *= maskValue;
+                `
+            );
+            shader.fragmentShader = shader.fragmentShader.replace(
+                'gl_FragColor = vec4( outgoingLight, diffuseColor.a );',
+                `
+                vec3 finalColor = mix(originalColor, outgoingLight, maskValue);
+                gl_FragColor = vec4(finalColor, diffuseColor.a);
+                `
+            );
+        };
+        return material;
+    }
+
+    static getZValueFromDepthMap(depthMapTexture, x, y, zOffset) {
+        // Default Z value, used when depth cannot be read
+        const defaultZ = 1.0;
+        
+        try {
+            if (!depthMapTexture || !depthMapTexture.image) {
+                return defaultZ + zOffset;
+            }
+            
+            // Create temporary canvas to read pixels from depth map
+            if (!this.depthMapCanvas) {
+                this.depthMapCanvas = document.createElement('canvas');
+                this.depthMapContext = this.depthMapCanvas.getContext('2d');
+            }
+            
+            const img = depthMapTexture.image;
+            this.depthMapCanvas.width = img.width;
+            this.depthMapCanvas.height = img.height;
+            this.depthMapContext.drawImage(img, 0, 0);
+            
+            // Calculate coordinates
+            const pixelX = Math.floor(x * img.width);
+            const pixelY = Math.floor(y * img.height);
+            
+            // Get pixel data
+            try {
+                const pixelData = this.depthMapContext.getImageData(pixelX, pixelY, 1, 1).data;
+                // Convert grayscale value (0-255) to depth (0.1-2.0)
+                // Usually, white means closer, black means farther
+                const depth = pixelData[0] / 255; // Use red channel as depth value
+                
+                // Convert to z-axis and add offset
+                const zValue = 1 + depth * 1 + zOffset;
+                return zValue;
+            } catch (error) {
+                console.error('[RelightNode] ' + t("读取深度图像素失败") + ":", error);
+                return defaultZ + zOffset;
+            }
+        } catch (error) {
+            console.error('[RelightNode] ' + t("获取Z值时出错") + ":", error);
+            return defaultZ + zOffset;
+        }
+    }
 }
-
-export const modalStyles = `
-    #relight-editor-modal * {
-        user-select: none;
-        -webkit-user-select: none;
-        -moz-user-select: none;
-        -ms-user-select: none;
-    }
-    #relight-editor-modal {
-        border: none;
-        border-radius: 8px;
-        padding: 0;
-        background: #2a2a2a;
-        width: 90vw;
-        height: 90vh;
-        max-width: 90vw;
-        max-height: 90vh;
-    }
-    .relight-modal-content {
-        background: #1a1a1a;
-        width: 100%;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-    }
-    .relight-modal-header {
-        padding: 10px 15px;
-        border-bottom: 1px solid #333;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: #333;
-    }
-    .relight-modal-title {
-        font-size: 18px;
-        color: #fff;
-    }
-    .relight-modal-body {
-        flex: 1;
-        display: flex;
-        overflow: hidden;
-        height: calc(100% - 120px);
-    }
-    .relight-canvas-container {
-        flex: 1;
-        position: relative;
-        overflow: hidden;
-        background: #222;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        cursor: pointer;
-    }
-    .light-source-indicator {
-        position: absolute;
-        width: 24px;
-        height: 24px;
-        background: #ffffff;
-        border-radius: 50%;
-        transform: translate(-50%, -50%);
-        pointer-events: none;
-        box-shadow: 0 0 15px rgba(255, 255, 255, 0.7);
-        z-index: 100;
-        opacity: 1.0;
-        transition: opacity 0.3s;
-    }
-    .spotlight-target-indicator {
-        position: absolute;
-        width: 12px;
-        height: 12px;
-        background: #ffffff;
-        border: 2px solid rgba(0, 0, 0, 0.5);
-        border-radius: 50%;
-        transform: translate(-50%, -50%);
-        pointer-events: none;
-        z-index: 90;
-        opacity: 0.9;
-    }
-    .spotlight-connection-line {
-        position: absolute;
-        height: 2px;
-        background: rgba(255, 255, 255, 0.7);
-        transform-origin: left center;
-        pointer-events: none;
-        z-index: 80;
-    }
-    .light-source-hint {
-        position: absolute;
-        top: 10px;
-        left: 10px;
-        color: rgba(255, 255, 255, 0.7);
-        font-size: 12px;
-        background: rgba(0, 0, 0, 0.5);
-        padding: 5px 10px;
-        border-radius: 3px;
-        pointer-events: none;
-        opacity: 0.7;
-        transition: opacity 0.3s;
-    }
-    .spotlight-hint {
-        position: absolute;
-        bottom: 10px;
-        left: 10px;
-        color: rgba(255, 255, 255, 0.7);
-        font-size: 12px;
-        background: rgba(0, 0, 0, 0.5);
-        padding: 5px 10px;
-        border-radius: 3px;
-        pointer-events: none;
-        opacity: 0.7;
-        z-index: 110;
-    }
-    .relight-canvas-container:hover .light-source-hint {
-        opacity: 0.3;
-    }
-    .relight-controls {
-        width: 300px;
-        padding: 15px;
-        background: #222;
-        border-left: 1px solid #333;
-        overflow-y: auto;
-        height: 100%;
-    }
-    .relight-control-group {
-        margin-bottom: 15px;
-    }
-    .relight-control-group h3 {
-        font-size: 14px;
-        color: #ccc;
-        margin-bottom: 10px;
-        border-bottom: 1px solid #333;
-        padding-bottom: 5px;
-    }
-    .relight-control-item {
-        margin-bottom: 10px;
-    }
-    .relight-control-item label {
-        display: block;
-        color: #aaa;
-        margin-bottom: 5px;
-        font-size: 12px;
-    }
-    .relight-slider {
-        width: 100%;
-        background: #333;
-        height: 6px;
-        -webkit-appearance: none;
-        border-radius: 3px;
-    }
-    .relight-slider::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        width: 16px;
-        height: 16px;
-        background: #0080ff;
-        border-radius: 50%;
-        cursor: pointer;
-    }
-    .relight-select {
-        width: 100%;
-        background: #333;
-        color: #fff;
-        border: none;
-        padding: 6px 8px;
-        border-radius: 4px;
-        cursor: pointer;
-    }
-    .relight-select option {
-        background: #2a2a2a;
-    }
-    .relight-buttons {
-        padding: 15px;
-        border-top: 1px solid #333;
-        display: flex;
-        justify-content: flex-end;
-    }
-    .relight-btn {
-        background: #0080ff;
-        color: white;
-        border: none;
-        padding: 8px 15px;
-        border-radius: 4px;
-        margin-left: 10px;
-        cursor: pointer;
-        font-size: 14px;
-    }
-    .relight-btn:hover {
-        background: #0070e0;
-    }
-    .relight-btn.cancel {
-        background: #444;
-    }
-    .relight-btn.cancel:hover {
-        background: #555;
-    }
-    .light-intensity-indicator {
-        width: 100%;
-        height: 10px;
-        background: linear-gradient(to right, #333, #fffa);
-        border-radius: 5px;
-        margin-top: 5px;
-    }
-    .light-value-display {
-        display: flex;
-        justify-content: space-between;
-        color: #aaa;
-        font-size: 12px;
-        margin-top: 5px;
-    }
-    .light-sources-list {
-        max-height: 200px;
-        overflow-y: auto;
-        margin-bottom: 10px;
-        border: 1px solid #333;
-        border-radius: 4px;
-        background: #1a1a1a;
-    }
-    .light-source-item {
-        background: #333;
-        border-radius: 4px;
-        padding: 8px;
-        margin-bottom: 4px;
-        position: relative;
-        cursor: pointer;
-        transition: background 0.2s;
-    }
-    .light-source-item:hover {
-        background: #444;
-    }
-    .light-source-item.active {
-        border: 1px solid #0080ff;
-        background: #2a2a2a;
-    }
-    .light-source-header {
-        display: flex;
-        align-items: center;
-        width: 100%;
-    }
-    .light-source-color {
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        margin-right: 5px;
-        box-shadow: 0 0 3px rgba(0,0,0,0.3);
-        flex-shrink: 0;
-    }
-    .light-source-name {
-        color: #ddd;
-        font-size: 12px;
-        margin-right: 5px;
-        flex-grow: 1;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .light-source-controls {
-        display: flex;
-        align-items: center;
-        gap: 5px;
-        margin-left: auto;
-    }
-    .light-source-controls button {
-        background: none;
-        border: none;
-        color: #aaa;
-        cursor: pointer;
-        padding: 2px 4px;
-        font-size: 16px;
-        transition: color 0.2s;
-    }
-    .light-source-controls button:hover {
-        color: #fff;
-    }
-    .light-source-delete {
-        color: #ff4444 !important;
-    }
-    .light-source-delete:hover {
-        color: #ff6666 !important;
-    }
-    .light-color-picker {
-        width: 20px;
-        height: 20px;
-        padding: 0;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        background: none;
-    }
-    .light-color-picker::-webkit-color-swatch-wrapper {
-        padding: 0;
-    }
-    .light-color-picker::-webkit-color-swatch {
-        border: 1px solid #666;
-        border-radius: 4px;
-    }
-    .selection-ring {
-        position: absolute;
-        top: -6px;
-        left: -6px;
-        right: -6px;
-        bottom: -6px;
-        border: 6px solid #00ff00;
-        border-radius: 50%;
-        box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
-    }
-    .spotlight-controls {
-        transition: display 0.3s;
-    }
-    #relight-editor-modal::backdrop {
-        background: rgba(0, 0, 0, 0.5);
-    }
-    #relight-editor-modal {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        margin: 0;
-    }
-`;
