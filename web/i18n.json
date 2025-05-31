@@ -1,0 +1,19 @@
+{
+  "zh": {
+    "选择光源颜色": "选择光源颜色",
+    "隐藏": "隐藏",
+    "显示": "显示",
+    "删除": "删除",
+    "光源": "光源"
+    // Añade aquí todas las frases detectadas
+  },
+  "en": {
+    "选择光源颜色": "Select light color",
+    "隐藏": "Hide",
+    "显示": "Show",
+    "删除": "Delete",
+    "光源": "Light Source"
+    // Traducciones correspondientes
+  }
+  // Puedes agregar más idiomas en el futuro
+}
