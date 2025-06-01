@@ -1,6 +1,7 @@
 # Comfyui-LG_Relight
 This is a fork for testing the very good project of LAOGOU.
-It is a personal/manual translation to English, just for testing
+It is a personal/manual translation to English, just for testing.
+
 For the latest code:
 https://github.com/LAOGOU-666/Comfyui-LG_Relight
 
