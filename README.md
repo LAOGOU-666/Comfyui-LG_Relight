@@ -1,4 +1,4 @@
-# Comfyui-LG_Relight
+# Comfyui-LG_Relight-ENGLISH for testing (JUN 1 - 2025)
 This is a fork for testing the very good project of LAOGOU.
 It is a personal/manual translation to English, just for testing.
 
