@@ -2,7 +2,6 @@ import { api } from '../../../scripts/api.js'
 import { app } from '../../../scripts/app.js'
 import { createRelightModal, modalStyles } from './config.js'
 import { SceneUtils } from './scene_utils.js'
-import { t } from './i18n.js';
 
 export class LightEditor {
     constructor() {
@@ -40,7 +39,7 @@ export class LightEditor {
             slider.addEventListener('input', this.onSliderChangeHandler);
         });
         
-        // 添加光源类型切换事件监听 Add light source type switching event listener
+        // 添加光源类型切换事件监听
         const lightTypeSelect = this.modal.querySelector('#lightType');
         if (lightTypeSelect) {
             lightTypeSelect.addEventListener('change', this.onLightTypeChangeHandler);
@@ -52,17 +51,17 @@ export class LightEditor {
         const spotlightControls = this.modal.querySelectorAll('.spotlight-controls');
         const pointlightControls = this.modal.querySelectorAll('.pointlight-controls');
         
-        // 显示或隐藏聚光灯控制项 Show or hide the spotlight controls
+        // 显示或隐藏聚光灯控制项
         spotlightControls.forEach(control => {
             control.style.display = lightType === 'spot' ? 'block' : 'none';
         });
         
-        // 显示或隐藏点光源控制项 Show or hide point light controls
+        // 显示或隐藏点光源控制项
         pointlightControls.forEach(control => {
             control.style.display = lightType === 'point' ? 'block' : 'none';
         });
         
-        // 如果有活动光源，转换其类型 If there is an active light source, change its type
+        // 如果有活动光源，转换其类型
         if (this.activeSourceIndex !== -1) {
             const activeSource = this.lightSources[this.activeSourceIndex];
             if (activeSource) {
@@ -72,19 +71,19 @@ export class LightEditor {
     }
     
     convertLightType(source, newType) {
-        // 保存原始光源的属性 Preserve the properties of the original light source
+        // 保存原始光源的属性
         const position = source.position;
         const intensity = source.intensity;
         const color = source.light.color.getHex();
         const visible = source.light.visible;
         
-        // 从场景中移除原始光源 Remove the original light source from the scene
+        // 从场景中移除原始光源
         this.scene.remove(source.light);
         if (source.lightType === 'spot' && source.light.target) {
             this.scene.remove(source.light.target);
         }
         
-        // 创建新的光源 Creating a New Light Source
+        // 创建新的光源
         let newLight;
         if (newType === 'spot') {
             const spotlightAngleSlider = this.modal.querySelector('#spotlightAngle');
@@ -94,12 +93,12 @@ export class LightEditor {
             
             newLight = new THREE.SpotLight(color, intensity, 10, angle, penumbra);
             
-            // 设置目标点位置 Set the target point position
+            // 设置目标点位置
             let targetPosition;
             if (source.targetPosition) {
                 targetPosition = source.targetPosition;
             } else {
-                // 如果没有现成的目标点，默认设置在光源下方一些位置 If there is no ready-made target point, the default setting is some position below the light source.
+                // 如果没有现成的目标点，默认设置在光源下方一些位置
                 targetPosition = {
                     x: position.x,
                     y: position.y - 1,
@@ -111,26 +110,26 @@ export class LightEditor {
             
             this.scene.add(newLight.target);
             
-            // 为光源添加聚光灯特有属性 Add spotlight-specific properties to light sources
+            // 为光源添加聚光灯特有属性
             source.spotParams = {
                 angle: angle,
                 penumbra: penumbra
             };
             
-            // 聚光灯指示器样式修改 Spotlight indicator style modification
+            // 聚光灯指示器样式修改
             if (source.indicator) {
                 source.indicator.style.clipPath = 'polygon(50% 0%, 0% 100%, 100% 100%)';
                 source.indicator.style.transform = 'translate(-50%, -20%)';
             }
             
-            // 创建连接线 Create a connection line
+            // 创建连接线
             if (!source.connectionLine) {
                 source.connectionLine = document.createElement('div');
                 source.connectionLine.className = 'spotlight-connection-line';
                 this.canvasContainer.appendChild(source.connectionLine);
             }
             
-            // 创建目标点指示器 Creating a Target Point Indicator
+            // 创建目标点指示器
             if (!source.targetIndicator) {
                 source.targetIndicator = this.createTargetIndicator(
                     source.lightColor || '#ffffff'
@@ -139,7 +138,7 @@ export class LightEditor {
                 this.canvasContainer.appendChild(source.targetIndicator);
             }
             
-            // 更新连接线位置 Update the position of the connection line
+            // 更新连接线位置
             this.updateSpotlightLine(source);
         } else {
             const pointlightRadiusSlider = this.modal.querySelector('#pointlightRadius');
@@ -147,46 +146,46 @@ export class LightEditor {
             
             newLight = new THREE.PointLight(color, intensity, radius, 2);
             
-            // 点光源指示器样式恢复 Point light indicator style restored
+            // 点光源指示器样式恢复
             if (source.indicator) {
                 source.indicator.style.clipPath = '';
                 source.indicator.style.borderRadius = '50%';
                 source.indicator.style.transform = 'translate(-50%, -50%)';
             }
             
-            // 隐藏连接线 Hide Connection Lines
+            // 隐藏连接线
             if (source.connectionLine) {
                 source.connectionLine.style.display = 'none';
             }
             
-            // 隐藏目标点指示器 Hide the target point indicator
+            // 隐藏目标点指示器
             if (source.targetIndicator) {
                 source.targetIndicator.style.display = 'none';
             }
             
-            // 移除聚光灯特有属性 Removed spotlight specific properties
+            // 移除聚光灯特有属性
             if (source.spotParams) {
                 delete source.spotParams;
             }
             
-            // 为点光源添加半径参数 Added radius parameter for point lights
+            // 为点光源添加半径参数
             source.pointParams = {
                 radius: radius
             };
         }
         
-        // 设置新光源的位置和可见性 Set the position and visibility of the new light
+        // 设置新光源的位置和可见性
         newLight.position.set(position.x, position.y, position.z);
         newLight.visible = visible;
         
-        // 更新光源对象 Update Light Object
+        // 更新光源对象
         source.light = newLight;
         source.lightType = newType;
         
-        // 将新光源添加到场景 Adding a New Light to the Scene
+        // 将新光源添加到场景
         this.scene.add(newLight);
         
-        // 更新渲染 Update Rendering
+        // 更新渲染
         this.render();
     }
 
@@ -202,9 +201,9 @@ export class LightEditor {
                         node_id: this.currentNode.id
                     })
                 });
-                console.log('[RelightNode] 已发送取消信号 Cancellation signal sent');
+                console.log('[RelightNode] 已发送取消信号Cancellation signal sent');
             } catch (error) {
-                console.error('[RelightNode] 发送取消信号失败: Failed to send cancel signal:', error);
+                console.error('[RelightNode] 发送取消信号失败Failed to send cancel signal:', error);
             }
         }
         document.removeEventListener('mousemove', this.onCanvasMouseMoveHandler);
@@ -249,15 +248,15 @@ export class LightEditor {
             
         const activeSource = this.activeSourceIndex !== -1 ? this.lightSources[this.activeSourceIndex] : null;
         
-        // 鼠标右键，且当前有活动的聚光灯 Right mouse button, and there is currently an active spotlight
+        // 鼠标右键，且当前有活动的聚光灯
         if (event.button === 2 && activeSource && activeSource.lightType === 'spot') {
             event.preventDefault();
             event.stopPropagation();
             
-            // 切换到目标点编辑模式 Switch to target point editing mode
+            // 切换到目标点编辑模式
             activeSource.editingTarget = true;
             
-            // 创建或显示目标点指示器 Create or display a target point indicator
+            // 创建或显示目标点指示器
             if (!activeSource.targetIndicator) {
                 activeSource.targetIndicator = this.createTargetIndicator(activeSource.lightColor || '#ffffff');
                 this.canvasContainer.appendChild(activeSource.targetIndicator);
@@ -265,7 +264,7 @@ export class LightEditor {
                 activeSource.targetIndicator.style.display = 'block';
             }
             
-            // 更新连接线 Update Connection Line
+            // 更新连接线
             if (!activeSource.connectionLine) {
                 activeSource.connectionLine = document.createElement('div');
                 activeSource.connectionLine.className = 'spotlight-connection-line';
@@ -280,7 +279,7 @@ export class LightEditor {
             return;
         }
         
-        // 如果之前是在编辑目标点，现在切换回编辑光源位置 If you were editing the target point before, switch back to editing the light position.
+        // 如果之前是在编辑目标点，现在切换回编辑光源位置
         if (activeSource && activeSource.editingTarget) {
             activeSource.editingTarget = false;
         }
@@ -301,11 +300,11 @@ export class LightEditor {
     onCanvasMouseUp(event) {
         const activeSource = this.activeSourceIndex !== -1 ? this.lightSources[this.activeSourceIndex] : null;
         
-        // 如果处于目标点编辑模式，鼠标抬起后完成目标点的放置 If in target point editing mode, the target point is placed after the mouse is lifted
+        // 如果处于目标点编辑模式，鼠标抬起后完成目标点的放置
         if (activeSource && activeSource.editingTarget) {
             activeSource.editingTarget = false;
             
-            // 隐藏目标点指示器，但保留连接线 Hide the target point indicator but keep the connection line
+            // 隐藏目标点指示器，但保留连接线
             if (activeSource.targetIndicator) {
                 activeSource.targetIndicator.style.display = 'none';
             }
@@ -330,11 +329,11 @@ export class LightEditor {
         
         this.updateLightIndicatorExact(mouseX, mouseY, activeSource.indicator);
         
-        // 移除X轴计算中的负号 Remove the negative sign in the X-axis calculation
+        // 移除X轴计算中的负号
         this.lightX = ((x * 2) - 1);
         this.lightY = ((1 - y) * 2) - 1;
         
-        // 从深度图获取Z轴高度 Get the Z-axis height from the depth map
+        // 从深度图获取Z轴高度
         const zValue = SceneUtils.getZValueFromDepthMap(this.depthMapTexture, x, y, this.zOffset);
         
         const xValueEl = this.modal.querySelector('.light-x-value');
@@ -344,17 +343,17 @@ export class LightEditor {
         yValueEl.textContent = this.lightY.toFixed(2);
         zValueEl.textContent = zValue.toFixed(2);
         
-        // 更新光源位置，包括从深度图获取的Z值 Update the light source position, including the Z value obtained from the depth map
+        // 更新光源位置，包括从深度图获取的Z值
         activeSource.position = { x: this.lightX, y: this.lightY, z: zValue };
         activeSource.light.position.set(this.lightX, this.lightY, zValue);
         
-        // 如果当前正在编辑目标点而不是光源位置 If you are currently editing a target point instead of a light position
+        // 如果当前正在编辑目标点而不是光源位置
         if (activeSource.editingTarget && activeSource.lightType === 'spot') {
-            // 更新目标点位置 Update the target point position
+            // 更新目标点位置
             activeSource.targetPosition = { x: this.lightX, y: this.lightY, z: 0 };
             activeSource.light.target.position.set(this.lightX, this.lightY, 0);
             
-            // 更新目标点指示器的位置 Update the position of the target point indicator
+            // 更新目标点指示器的位置
             if (activeSource.targetIndicator) {
                 this.updateLightIndicatorExact(mouseX, mouseY, activeSource.targetIndicator);
             }
@@ -476,7 +475,7 @@ export class LightEditor {
             this.depthMapTexture = depthMap;
             
             if (!texture.image || !texture.image.complete) {
-                console.warn('[RelightNode] 纹理图像未完全加载');
+                console.warn('[RelightNode] 纹理图像未完全加载Texture image not fully loaded');
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
             const imageWidth = texture.image.width;
@@ -501,7 +500,7 @@ export class LightEditor {
             const frustumWidth = frustumHeight * imageAspect;
 
             if (!this.isSceneSetup) {
-                console.log('[RelightNode] 首次创建场景');
+                console.log('[RelightNode] 首次创建场景Creating a scene for the first time');
                 this.scene = new THREE.Scene();
                 this.camera = new THREE.OrthographicCamera(
                     frustumWidth / -2,
@@ -749,10 +748,10 @@ export class LightEditor {
             const item = document.createElement('div');
             item.className = `light-source-item ${index === this.activeSourceIndex ? 'active' : ''}`;
             
-            // 根据光源的可见状态选择眼睛图标 Select the eye icon based on the visible state of the light source
+            // 根据光源的可见状态选择眼睛图标
             const visibilityIcon = source.light.visible ? '👁️' : '👁️‍🗨️';
             
-            // 添加光源类型图标 Add light type icon
+            // 添加光源类型图标
             const typeIcon = source.lightType === 'spot' ? '🔦' : '💡';
             
             item.innerHTML = `
@@ -760,17 +759,17 @@ export class LightEditor {
                     <div class="light-source-color" style="background-color: ${source.indicatorColor}"></div>
                     <span class="light-source-name">${typeIcon} ${source.name}</span>
                     <div class="light-source-controls">
-                        <input type="color" class="light-color-picker" value="${source.lightColor || '#ffffff'}" title="${t('选择光源颜色')}">
-                        <button class="light-source-visibility" title="${source.light.visible ? t('隐藏') : t('显示')}">${visibilityIcon}</button>
-                        <button class="light-source-delete" title="${t('删除')}">🗑️</button>
+                        <input type="color" class="light-color-picker" value="${source.lightColor || '#ffffff'}" title="选择光源颜色 Select the light source color">
+                        <button class="light-source-visibility" title="${source.light.visible ? '隐藏' : '显示'}">${visibilityIcon}</button>
+                        <button class="light-source-delete" title="删除 delete">🗑️</button>
                     </div>
                 </div>
             `;
-            // 添加数据属性以识别索引 Add a data attribute to identify the index
+            // 添加数据属性以识别索引
             item.dataset.lightIndex = index;
             item.addEventListener('click', (e) => {
-                // 添加点击时的日志输出 Add log output when clicking
-                console.log(`[RelightNode] 点击了光源项 ${index}, 当前活动光源: ${this.activeSourceIndex}`);
+                // 添加点击时的日志输出
+                console.log(`[RelightNode] 点击了光源项  Click on the light source ${index}, 当前活动光源 Currently active light source: ${this.activeSourceIndex}`);
                 this.setActiveLight(index);
             });
             const colorPicker = item.querySelector('.light-color-picker');
@@ -790,9 +789,9 @@ export class LightEditor {
                 visibilityBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     this.toggleLightVisibility(index);
-                    // 更新按钮图标 Update button icon
+                    // 更新按钮图标
                     visibilityBtn.textContent = source.light.visible ? '👁️' : '👁️‍🗨️';
-                    visibilityBtn.title = source.light.visible ? '隐藏' : '显示';
+                    visibilityBtn.title = source.light.visible ? '隐藏Hide' : '显示Show';
                 });
             }
             listContainer.appendChild(item);
@@ -800,9 +799,9 @@ export class LightEditor {
     }
 
     setActiveLight(index) {
-        console.log(`[RelightNode] 设置活动光源: ${index}, 当前光源数量: ${this.lightSources.length}`);
+        console.log(`[RelightNode] 设置活动光源Set active light source: ${index}, 当前光源数量Current number of light sources: ${this.lightSources.length}`);
         
-        // 先清除所有光源的选中状态 First clear the selection of all light sources
+        // 先清除所有光源的选中状态
         this.lightSources.forEach(source => {
             if (source.indicator) {
                 const ring = source.indicator.querySelector('.selection-ring');
@@ -818,13 +817,13 @@ export class LightEditor {
         if (source && source.indicator) {
             const ring = source.indicator.querySelector('.selection-ring');
             if (ring) {
-                console.log(`[RelightNode] 显示光源 ${index} 的选择环`);
+                console.log(`[RelightNode] 显示光源Display Light Source ${index} 的选择环Selection ring`);
                 ring.style.display = 'block';
             } else {
-                console.warn(`[RelightNode] 光源 ${index} 没有选择环元素`);
+                console.warn(`[RelightNode] 光源 ${index} 没有选择环元素No ring element selected`);
             }
         } else {
-            console.warn(`[RelightNode] 光源 ${index} 或其指示器不存在`);
+            console.warn(`[RelightNode] 光源light source ${index} 或其指示器不存在or its indicator does not exist`);
         }
 
         // 更新光源列表UI中的活动项
@@ -960,10 +959,10 @@ export class LightEditor {
         try {
             this.currentNode = app.graph.getNodeById(nodeId);
             if (!this.currentNode) {
-                console.error('[RelightNode] 找不到节点:', nodeId);
+                console.error('[RelightNode] 找不到节点Node not found:', nodeId);
                 return;
             }
-            console.log('[RelightNode] 开始处理图像...');
+            console.log('[RelightNode] 开始处理图像Start processing the image...');
             const { bg_image, bg_depth_map, bg_normal_map, has_mask, mask } = detail;
             this.hasMask = has_mask;
             this.modal.showModal();
@@ -996,14 +995,14 @@ export class LightEditor {
             ];
             if (has_mask && mask) {
                 texturePromises.push(SceneUtils.base64ToTexture(mask));
-                console.log('[RelightNode] 检测到遮罩数据，将加载遮罩纹理');
+                console.log('[RelightNode] 检测到遮罩数据，将加载遮罩纹理Mask data is detected and the mask texture will be loaded');
             }
             const loadedTextures = await Promise.all(texturePromises);
             const texture = loadedTextures[0];
             const depthMap = loadedTextures[1];
             const normalMap = loadedTextures[2];
             const maskTexture = has_mask ? loadedTextures[3] : null;
-            console.log('[RelightNode] 纹理加载完成，设置场景...');
+            console.log('[RelightNode] 纹理加载完成，设置场景Texture loading complete, set up the scene...');
             await this.setupScene(texture, depthMap, normalMap, maskTexture);
             
             // 移除画布上的所有指示器元素
@@ -1012,7 +1011,7 @@ export class LightEditor {
             
             const configRestored = await this.restoreLightConfiguration(nodeId);
             if (!configRestored) {
-                console.log('[RelightNode] 没有找到已保存的配置，使用空白配置');
+                console.log('[RelightNode] 没有找到已保存的配置，使用空白配置No saved configuration found, using a blank configuration');
                 // 没有恢复到配置，保持空白状态
             }
             
@@ -1029,13 +1028,13 @@ export class LightEditor {
                 
                 // 添加新的事件监听器
                 newAddLightBtn.addEventListener('click', () => {
-                    console.log('[RelightNode] 添加新光源');
+                    console.log('[RelightNode] 添加新光源Adding a New Light');
                     if (this.scene) {
                         const newSource = this.createLightSource();
-                        console.log('[RelightNode] 新光源已创建，ID:', newSource.id);
+                        console.log('[RelightNode] 新光源已创建New light source created，ID:', newSource.id);
                         this.updateLightSourcesList();
                     } else {
-                        console.error('[RelightNode] 场景未初始化，无法添加光源');
+                        console.error('[RelightNode] 场景未初始化，无法添加光源The scene is not initialized, so light sources cannot be added.');
                     }
                 });
             }
@@ -1043,9 +1042,9 @@ export class LightEditor {
             // 初始化光源列表
             this.updateLightSourcesList();
             
-            console.log('[RelightNode] 编辑器显示成功，当前光源数量:', this.lightSources.length);
+            console.log('[RelightNode] 编辑器显示成功，当前光源数量The editor displays success, the current number of light sources:', this.lightSources.length);
         } catch (error) {
-            console.error('[RelightNode] 处理图像时出错:', error);
+            console.error('[RelightNode] 处理图像时出错Error processing image:', error);
         }
     }
 
@@ -1209,7 +1208,7 @@ export class LightEditor {
                     // 确保DOM元素已完全加载并计算好尺寸
                     setTimeout(() => {
                         this.updateSpotlightLine(source);
-                        console.log('[RelightNode] 更新聚光灯连接线:', source.name);
+                        console.log('[RelightNode] 更新聚光灯连接线Update spotlight connector:', source.name);
                     }, 50);
                 }
             }
@@ -1268,11 +1267,11 @@ export class LightEditor {
         try {
             this.currentNode = app.graph.getNodeById(nodeId);
             if (!this.currentNode) {
-                console.error('[RelightNode] 找不到节点:', nodeId);
+                console.error('[RelightNode] 找不到节点Node not found:', nodeId);
                 return;
             }
             
-            console.log('[RelightNode] 开始无弹窗处理图像...');
+            console.log('[RelightNode] 开始无弹窗处理图像Start processing images without pop-up window...');
             const { bg_image, bg_depth_map, bg_normal_map, has_mask, mask } = detail;
             this.hasMask = has_mask;
             
@@ -1347,9 +1346,9 @@ export class LightEditor {
             // 保存当前配置以供将来使用
             this.saveLightConfiguration(nodeId);
             
-            console.log('[RelightNode] 无弹窗处理完成 No pop-up window processing completed');
+            console.log('[RelightNode] 无弹窗处理完成No pop-up window processing completed');
         } catch (error) {
-            console.error('[RelightNode] 无弹窗处理错误: No pop-up window processing error:', error);
+            console.error('[RelightNode] 无弹窗处理错误No pop-up window processing error:', error);
         }
     }
 
@@ -1403,7 +1402,7 @@ export class LightEditor {
             
             return true;
         } catch (error) {
-            console.error('[RelightNode] 临时场景设置错误:', error);
+            console.error('[RelightNode] 临时场景设置错误Temporary scene setting error:', error);
             return false;
         }
     }
@@ -1420,7 +1419,7 @@ export class LightEditor {
         const defaultLight = {
             id: Date.now(),
             name: "默认光源",
-            // 创建默认点光源 Creating a Default Point Light
+            // 创建默认点光源
             light: new THREE.PointLight(0xffffff, 1.0, 10, 2),
             position: { x: 0, y: 0, z: 1.0 },
             intensity: 1.0,
@@ -1432,7 +1431,7 @@ export class LightEditor {
             }
         };
         
-        // 直接设置点光源位置 Directly set the point light position
+        // 直接设置点光源位置
         defaultLight.light.position.set(0, 0, 1);
         this.scene.add(defaultLight.light);
         this.lightSources.push(defaultLight);
@@ -1457,11 +1456,11 @@ export class LightEditor {
         const lightRect = source.indicator.getBoundingClientRect();
         const canvasRect = this.canvasContainer.getBoundingClientRect();
         
-        // 计算光源中心点 Calculate the center point of the light source
+        // 计算光源中心点
         const lightX = lightRect.left + lightRect.width/2 - canvasRect.left;
         const lightY = lightRect.top + lightRect.height/2 - canvasRect.top;
         
-        // 如果有目标点指示器，使用它的位置 If there is a target point indicator, use its location
+        // 如果有目标点指示器，使用它的位置
         let targetX, targetY;
         if (source.targetIndicator && source.targetIndicator.style.display !== 'none') {
             const targetRect = source.targetIndicator.getBoundingClientRect();
@@ -1471,9 +1470,6 @@ export class LightEditor {
             // 否则使用目标点在3D空间中的位置计算屏幕位置
             // 这需要将3D空间点投影到屏幕空间
             // 简化处理：用已有信息估算
-            // Otherwise, use the position of the target point in 3D space to calculate the screen position
-	    // This requires projecting the 3D space point into the screen space
-            // Simplified processing: estimate using existing information
             const displayRect = this.displayRenderer.domElement.getBoundingClientRect();
             const targetPosNormalized = {
                 x: (source.targetPosition.x + 1) / 2,
@@ -1483,11 +1479,11 @@ export class LightEditor {
             targetY = displayRect.top + displayRect.height * targetPosNormalized.y - canvasRect.top;
         }
         
-        // 计算线段长度和角度 Calculate line segment length and angle
+        // 计算线段长度和角度
         const length = Math.sqrt(Math.pow(targetX - lightX, 2) + Math.pow(targetY - lightY, 2));
         const angle = Math.atan2(targetY - lightY, targetX - lightX) * 180 / Math.PI;
         
-        // 设置线段样式 Set the line style
+        // 设置线段样式
         source.connectionLine.style.width = `${length}px`;
         source.connectionLine.style.left = `${lightX}px`;
         source.connectionLine.style.top = `${lightY}px`;
