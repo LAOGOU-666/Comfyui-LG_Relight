@@ -1,92 +1,194 @@
-import { api } from '../../../scripts/api.js'
-import { app } from '../../../scripts/app.js'
-import { t } from '../i18n.js' // Importa el helper de traducción
-
-export const relightConfig = {
-    nodeName: "LG_Relight_Ultra",
-    libraryName: "ThreeJS",
-    libraryUrl: "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js",
-    defaultSize: 512,
-    routes: {
-        uploadEndpoint: "/lg_relight/upload_result",
-        dataEvent: "relight_image"
+export class SceneUtils {
+    static base64ToTexture(base64String) {
+        return new Promise((resolve) => {
+            const texture = new THREE.Texture();
+            const img = new Image();
+            img.src = `data:image/png;base64,${base64String}`;
+            img.onload = () => {
+                texture.image = img;
+                texture.needsUpdate = true;
+                resolve(texture);
+            };
+        });
     }
-};
 
-export function createRelightModal() {
-    const modal = document.createElement("dialog");
-    modal.id = "relight-editor-modal";
-    modal.innerHTML = `
-        <div class="relight-modal-content">
-            <div class="relight-modal-header">
-                <div class="relight-modal-title">${t("光照重建 - 3D打光")}</div>
-            </div>
-            <div class="relight-modal-body">
-                <div class="relight-canvas-container">
-                    <div class="light-source-indicator"></div>
-                    <div class="light-source-hint">${t("点击或拖动图像设置光源位置")}</div>
-                </div>
-                <div class="relight-controls">
-                    <div class="relight-control-group">
-                        <h3>${t("光照设置")}</h3>
-                        <div class="relight-control-item">
-                            <label>${t("光照位置")}: X: <span class="light-x-value">0.0</span>, Y: <span class="light-y-value">0.0</span>, Z: <span class="light-z-value">1.0</span></label>
-                        </div>
-                        <div class="relight-control-item">
-                            <label>${t("Z轴偏移")}</label>
-                            <input type="range" class="relight-slider" id="zOffset" min="-1" max="1" step="0.05" value="0">
-                        </div>
-                        <div class="relight-control-item">
-                            <label>${t("光照强度")}</label>
-                            <input type="range" class="relight-slider" id="lightIntensity" min="0" max="5" step="0.1" value="1.0">
-                            <div class="light-intensity-indicator"></div>
-                        </div>
-                        <div class="relight-control-item">
-                            <label>${t("环境光强度")}</label>
-                            <input type="range" class="relight-slider" id="ambientLight" min="0" max="1" step="0.05" value="0.2">
-                        </div>
-                        <div class="relight-control-item">
-                            <label>${t("法线强度")}</label>
-                            <input type="range" class="relight-slider" id="normalStrength" min="0" max="2" step="0.1" value="0">
-                        </div>
-                        <div class="relight-control-item light-type-selector">
-                            <label>${t("光源类型")}</label>
-                            <select id="lightType" class="relight-select">
-                                <option value="point">${t("点光源")}</option>
-                                <option value="spot">${t("聚光灯")}</option>
-                            </select>
-                        </div>
-                        <div class="relight-control-item pointlight-controls">
-                            <label>${t("光源半径")}</label>
-                            <input type="range" class="relight-slider" id="pointlightRadius" min="1" max="20" step="0.5" value="10">
-                        </div>
-                        <div class="relight-control-item spotlight-controls" style="display: none;">
-                            <label>${t("聚光灯角度")}</label>
-                            <input type="range" class="relight-slider" id="spotlightAngle" min="0.1" max="1.0" step="0.01" value="0.5">
-                        </div>
-                        <div class="relight-control-item spotlight-controls" style="display: none;">
-                            <label>${t("聚光灯衰减")}</label>
-                            <input type="range" class="relight-slider" id="spotlightPenumbra" min="0" max="1" step="0.05" value="0.2">
-                        </div>
-                    </div>
-                    <div class="relight-control-group">
-                        <h3>${t("光源管理")}</h3>
-                        <div class="light-sources-list">
-                            <!-- 这里会动态添加光源项 -->
-                        </div>
-                        <button class="relight-btn add-light">${t("添加光源")}</button>
-                    </div>
-                </div>
-            </div>
-            <div class="relight-buttons">
-                <button class="relight-btn cancel">${t("取消")}</button>
-                <button class="relight-btn apply">${t("应用")}</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-    return modal;
+    static createSimpleMaterial(baseTexture, depthMap, normalMap, normalScale = 0) {
+        return new THREE.MeshPhongMaterial({
+            map: baseTexture,
+            normalMap: normalMap,
+            normalScale: new THREE.Vector2(normalScale, normalScale),
+            displacementMap: depthMap,
+            displacementScale: 0.3,
+            shininess: 0,
+            specular: new THREE.Color(0)
+        });
+    }
+
+    static adjustSpotlightDirection(spotlight, targetPoint) {
+        // 确保目标点被设置并更新
+        if (targetPoint) {
+            spotlight.target.position.copy(targetPoint);
+        }
+        
+        // 确保目标被添加到场景中才能正常工作
+        if (!spotlight.target.parent) {
+            console.log('[RelightNode] 聚光灯目标未添加到场景中，请在创建聚光灯后调用 scene.add(spotlight.target)');
+        }
+        
+        spotlight.target.updateMatrixWorld();
+    }
+
+    static calculateSpotlightDirection(spotlightPos, targetPos) {
+        // 计算从聚光灯位置到目标位置的方向向量
+        const direction = new THREE.Vector3(
+            targetPos.x - spotlightPos.x,
+            targetPos.y - spotlightPos.y,
+            targetPos.z - spotlightPos.z
+        );
+        
+        // 归一化方向向量
+        direction.normalize();
+        
+        return direction;
+    }
+
+    static visualizeSpotlight(scene, spotlight, color = 0xffffff, segments = 8) {
+        // 移除之前的可视化对象
+        if (spotlight.visualHelper) {
+            scene.remove(spotlight.visualHelper);
+        }
+        
+        // 创建聚光灯锥体可视化几何体
+        const angle = spotlight.angle;
+        const distance = spotlight.distance || 10;
+        
+        // 计算锥体顶端半径
+        const radius = Math.tan(angle) * distance;
+        
+        // 创建锥体几何体
+        const geometry = new THREE.ConeGeometry(radius, distance, segments, 1, true);
+        geometry.rotateX(Math.PI);
+        
+        // 创建材质
+        const material = new THREE.MeshBasicMaterial({
+            color: color,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.3
+        });
+        
+        // 创建网格
+        const cone = new THREE.Mesh(geometry, material);
+        
+        // 设置位置为聚光灯位置
+        cone.position.copy(spotlight.position);
+        
+        // 获取方向
+        const target = new THREE.Vector3(
+            spotlight.target.position.x,
+            spotlight.target.position.y,
+            spotlight.target.position.z
+        );
+        
+        // 计算聚光灯到目标的方向
+        const direction = this.calculateSpotlightDirection(
+            {x: spotlight.position.x, y: spotlight.position.y, z: spotlight.position.z},
+            {x: target.x, y: target.y, z: target.z}
+        );
+        
+        // 使锥体指向目标
+        cone.lookAt(target);
+        
+        // 存储可视化对象
+        spotlight.visualHelper = cone;
+        
+        // 添加到场景
+        scene.add(cone);
+        
+        return cone;
+    }
+
+    static createMaskedMaterial(baseTexture, depthMap, normalMap, maskTexture, normalScale = 1.0) {
+        console.log('[RelightNode] 创建带遮罩的材质');
+        const material = new THREE.MeshPhongMaterial({
+            map: baseTexture,
+            normalMap: normalMap,
+            normalScale: new THREE.Vector2(normalScale, normalScale),
+            displacementMap: depthMap,
+            displacementScale: 0.3,
+            shininess: 30,
+            specular: new THREE.Color(0x444444)
+        });
+        material.onBeforeCompile = (shader) => {
+            shader.uniforms.maskTexture = { value: maskTexture };
+            shader.fragmentShader = shader.fragmentShader.replace(
+                'uniform float opacity;',
+                'uniform float opacity;\nuniform sampler2D maskTexture;'
+            );
+            shader.fragmentShader = shader.fragmentShader.replace(
+                '#include <color_fragment>',
+                `
+                #include <color_fragment>
+                float maskValue = texture2D(maskTexture, vUv).r;
+                vec3 originalColor = diffuseColor.rgb;
+                reflectedLight.directDiffuse *= maskValue;
+                reflectedLight.directSpecular *= maskValue;
+                reflectedLight.indirectDiffuse *= maskValue;
+                reflectedLight.indirectSpecular *= maskValue;
+                `
+            );
+            shader.fragmentShader = shader.fragmentShader.replace(
+                'gl_FragColor = vec4( outgoingLight, diffuseColor.a );',
+                `
+                vec3 finalColor = mix(originalColor, outgoingLight, maskValue);
+                gl_FragColor = vec4(finalColor, diffuseColor.a);
+                `
+            );
+        };
+        return material;
+    }
+
+    static getZValueFromDepthMap(depthMapTexture, x, y, zOffset) {
+        // 默认Z值，当无法从深度图获取时使用
+        const defaultZ = 1.0;
+        
+        try {
+            if (!depthMapTexture || !depthMapTexture.image) {
+                return defaultZ + zOffset;
+            }
+            
+            // 创建临时画布以便于读取深度图像素
+            if (!this.depthMapCanvas) {
+                this.depthMapCanvas = document.createElement('canvas');
+                this.depthMapContext = this.depthMapCanvas.getContext('2d');
+            }
+            
+            const img = depthMapTexture.image;
+            this.depthMapCanvas.width = img.width;
+            this.depthMapCanvas.height = img.height;
+            this.depthMapContext.drawImage(img, 0, 0);
+            
+            // 计算图像上的坐标
+            const pixelX = Math.floor(x * img.width);
+            const pixelY = Math.floor(y * img.height);
+            
+            // 获取像素数据
+            try {
+                const pixelData = this.depthMapContext.getImageData(pixelX, pixelY, 1, 1).data;
+                // 从灰度值计算深度（0-255转为0.1-2.0范围）
+                // 通常深度图白色表示更近，黑色表示更远
+                const depth = pixelData[0] / 255; // 使用红色通道作为深度值
+                
+                // 转换为z轴范围，并添加偏移量
+                const zValue = 1 + depth * 1 + zOffset;
+                return zValue;
+            } catch (error) {
+                console.error('[RelightNode] 读取深度图像素失败:', error);
+                return defaultZ + zOffset;
+            }
+        } catch (error) {
+            console.error('[RelightNode] 获取Z值时出错:', error);
+            return defaultZ + zOffset;
+        }
+    }
 }
-
-// Los estilos no requieren traducción.
-export const modalStyles = `...`;
