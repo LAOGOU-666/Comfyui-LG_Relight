@@ -1,0 +1,15 @@
+[project]
+name = "lg_relight"
+description = "A simple implementation of real-time 3D lighting in ComfyUI. It's an open-source node, have fun playing around!"
+version = "1.0.0"
+license = {file = "LICENSE"}
+dependencies = ["pyqt5"]
+
+[project.urls]
+Repository = "https://github.com/LAOGOU-666/Comfyui-LG_Relight"
+#  Used by Comfy Registry https://comfyregistry.org
+
+[tool.comfy]
+PublisherId = ""
+DisplayName = "Comfyui-LG_Relight"
+Icon = ""
