@@ -18,68 +18,68 @@ export function createRelightModal() {
     modal.innerHTML = `
         <div class="relight-modal-content">
             <div class="relight-modal-header">
-                <div class="relight-modal-title">光照重建 - 3D打光</div>
+                <div class="relight-modal-title">光照重建 Lighting reconstruction - 3D打光</div>
             </div>
             <div class="relight-modal-body">
                 <div class="relight-canvas-container">
                     <div class="light-source-indicator"></div>
-                    <div class="light-source-hint">点击或拖动图像设置光源位置</div>
+                    <div class="light-source-hint">点击或拖动图像设置光源位置 Click or drag the image to set the light source position</div>
                 </div>
                 <div class="relight-controls">
                     <div class="relight-control-group">
-                        <h3>光照设置</h3>
+                        <h3>光照设置Lighting settings</h3>
                         <div class="relight-control-item">
-                            <label>光照位置: X: <span class="light-x-value">0.0</span>, Y: <span class="light-y-value">0.0</span>, Z: <span class="light-z-value">1.0</span></label>
+                            <label>光照位置Lighting Position: X: <span class="light-x-value">0.0</span>, Y: <span class="light-y-value">0.0</span>, Z: <span class="light-z-value">1.0</span></label>
                         </div>
                         <div class="relight-control-item">
-                            <label>Z轴偏移</label>
+                            <label>Z轴偏移Z-axis offset</label>
                             <input type="range" class="relight-slider" id="zOffset" min="-1" max="1" step="0.05" value="0">
                         </div>
                         <div class="relight-control-item">
-                            <label>光照强度</label>
+                            <label>光照强度Light intensity</label>
                             <input type="range" class="relight-slider" id="lightIntensity" min="0" max="5" step="0.1" value="1.0">
                             <div class="light-intensity-indicator"></div>
                         </div>
                         <div class="relight-control-item">
-                            <label>环境光强度</label>
+                            <label>环境光强度Ambient light intensity</label>
                             <input type="range" class="relight-slider" id="ambientLight" min="0" max="1" step="0.05" value="0.2">
                         </div>
                         <div class="relight-control-item">
-                            <label>法线强度</label>
+                            <label>法线强度Normal Strength</label>
                             <input type="range" class="relight-slider" id="normalStrength" min="0" max="2" step="0.1" value="0">
                         </div>
                         <div class="relight-control-item light-type-selector">
-                            <label>光源类型</label>
+                            <label>光源类型Light source type</label>
                             <select id="lightType" class="relight-select">
-                                <option value="point">点光源</option>
-                                <option value="spot">聚光灯</option>
+                                <option value="point">点光源Point Light</option>
+                                <option value="spot">聚光灯spotlight</option>
                             </select>
                         </div>
                         <div class="relight-control-item pointlight-controls">
-                            <label>光源半径</label>
+                            <label>光源半径Light source radius</label>
                             <input type="range" class="relight-slider" id="pointlightRadius" min="1" max="20" step="0.5" value="10">
                         </div>
                         <div class="relight-control-item spotlight-controls" style="display: none;">
-                            <label>聚光灯角度</label>
+                            <label>聚光灯角度Spotlight Angle</label>
                             <input type="range" class="relight-slider" id="spotlightAngle" min="0.1" max="1.0" step="0.01" value="0.5">
                         </div>
                         <div class="relight-control-item spotlight-controls" style="display: none;">
-                            <label>聚光灯衰减</label>
+                            <label>Spotlight Attenuation</label>
                             <input type="range" class="relight-slider" id="spotlightPenumbra" min="0" max="1" step="0.05" value="0.2">
                         </div>
                     </div>
                     <div class="relight-control-group">
-                        <h3>光源管理</h3>
+                        <h3>Light source management</h3>
                         <div class="light-sources-list">
-                            <!-- 这里会动态添加光源项 -->
+                            <!-- Light source items will be added dynamically here -->
                         </div>
-                        <button class="relight-btn add-light">添加光源</button>
+                        <button class="relight-btn add-light">Adding Light Sources</button>
                     </div>
                 </div>
             </div>
             <div class="relight-buttons">
-                <button class="relight-btn cancel">取消</button>
-                <button class="relight-btn apply">应用</button>
+                <button class="relight-btn cancel">Cancel</button>
+                <button class="relight-btn apply">apply</button>
             </div>
         </div>
     `;
