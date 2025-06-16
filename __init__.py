@@ -216,12 +216,12 @@ class LG_Relight:
                 return (image,)
             
         except Exception as e:
-            print(f"[ERROR] relight处理发生错误: {str(e)}")
+            print(f"[ERROR] An error occurred during relight processing: {str(e)}")
             import traceback
             print(traceback.format_exc())
             return (image,)
         finally:
-            print(f"[DEBUG] 清理资源: node_id={unique_id}")
+            print(f"[DEBUG] 清理资源Cleaning up resources: node_id={unique_id}")
             if unique_id in event_dict:
                 del event_dict[unique_id]
             if unique_id in image_cache:
@@ -240,7 +240,7 @@ async def update_image_v3(request):
                 event_dict[node_id].set()
             return web.Response(text=json.dumps({"status": "success"}))
         else:
-            return web.Response(status=400, text=json.dumps({"error": "无效数据"}))
+            return web.Response(status=400, text=json.dumps({"error": "无效数据Invalid data"}))
     except Exception as e:
         return web.Response(status=500, text=json.dumps({"error": str(e)}))
 

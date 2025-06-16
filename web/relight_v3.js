@@ -16,52 +16,52 @@ function createRelightModal() {
                 <div class="relight-controls">
                     <div class="slider-group">
                         <div class="control-row">
-                            <label>Z轴: <span id="z-value">1.000</span></label>
+                            <label>Z-axis: <span id="z-value">1.000</span></label>
                             <input type="range" id="z-slider" min="-1000" max="1000" value="1000" />
-                            <button class="reset-btn" data-slider="z">重置</button>
+                            <button class="reset-btn" data-slider="z">Reset</button>
                         </div>
                         <div class="control-row">
-                            <label>亮度: <span id="brightness-value">1.000</span></label>
+                            <label>brightness: <span id="brightness-value">1.000</span></label>
                             <input type="range" id="brightness-slider" min="0" max="300" value="100" />
-                            <button class="reset-btn" data-slider="brightness">重置</button>
+                            <button class="reset-btn" data-slider="brightness">Reset</button>
                         </div>
                         <div class="control-row">
-                            <label>阴影范围: <span id="shadow-range-value">1.000</span></label>
+                            <label>Shadow Range: <span id="shadow-range-value">1.000</span></label>
                             <input type="range" id="shadow-range-slider" min="0" max="200" value="100" />
-                            <button class="reset-btn" data-slider="shadow-range">重置</button>
+                            <button class="reset-btn" data-slider="shadow-range">Reset</button>
                         </div>
                         <div class="control-row">
-                            <label>阴影强度: <span id="shadow-strength-value">1.000</span></label>
+                            <label>Shadow Intensity: <span id="shadow-strength-value">1.000</span></label>
                             <input type="range" id="shadow-strength-slider" min="0" max="200" value="100" />
-                            <button class="reset-btn" data-slider="shadow-strength">重置</button>
+                            <button class="reset-btn" data-slider="shadow-strength">Reset</button>
                         </div>
                         <div class="control-row">
-                            <label>高光范围: <span id="highlight-range-value">1.000</span></label>
+                            <label>Highlight Range: <span id="highlight-range-value">1.000</span></label>
                             <input type="range" id="highlight-range-slider" min="0" max="200" value="100" />
-                            <button class="reset-btn" data-slider="highlight-range">重置</button>
+                            <button class="reset-btn" data-slider="highlight-range">Reset</button>
                         </div>
                         <div class="control-row">
-                            <label>高光强度: <span id="highlight-strength-value">1.000</span></label>
+                            <label>High light intensity: <span id="highlight-strength-value">1.000</span></label>
                             <input type="range" id="highlight-strength-slider" min="0" max="200" value="100" />
-                            <button class="reset-btn" data-slider="highlight-strength">重置</button>
+                            <button class="reset-btn" data-slider="highlight-strength">Reset</button>
                         </div>
                     </div>
                     <div class="bottom-controls">
                         <div class="color-controls">
                             <div class="color-row">
-                                <label>高光颜色:</label>
+                                <label>Specular Color:</label>
                                 <input type="color" id="highlight-color" value="#FFFFFF" />
-                                <button class="reset-color-btn" data-color="highlight">重置</button>
+                                <button class="reset-color-btn" data-color="highlight">Reset</button>
                             </div>
                             <div class="color-row">
-                                <label>阴影颜色:</label>
+                                <label>Shadow Color:</label>
                                 <input type="color" id="shadow-color" value="#000000" />
-                                <button class="reset-color-btn" data-color="shadow">重置</button>
+                                <button class="reset-color-btn" data-color="shadow">Reset</button>
                             </div>
                         </div>
                         <div class="action-buttons">
-                            <button id="apply-relight">应用</button>
-                            <button id="cancel-relight">取消</button>
+                            <button id="apply-relight">apply</button>
+                            <button id="cancel-relight">Cancel</button>
                         </div>
                     </div>
                 </div>
@@ -391,8 +391,8 @@ class RelightProcessor {
             };
             imgOriginal.onload = checkAllLoaded;
             imgNormals.onload = checkAllLoaded;
-            imgOriginal.onerror = () => reject(new Error("加载原始图像失败"));
-            imgNormals.onerror = () => reject(new Error("加载法线图失败"));
+            imgOriginal.onerror = () => reject(new Error("Failed to load original image"));
+            imgNormals.onerror = () => reject(new Error("Failed to load normal map"));
             imgOriginal.src = imageData;
             imgNormals.src = normalsData;
         });
@@ -575,7 +575,7 @@ app.registerExtension({
                         this.hasFixedSeed = false;
                     }
                 };
-                const updateButton = this.addWidget("button", "更新种子", null, () => {
+                const updateButton = this.addWidget("button", "Update torrent", null, () => {
                     const mode = seed_modeWidget.value;
                     let newValue = seedWidget.value;
                     if (mode === "randomize") {

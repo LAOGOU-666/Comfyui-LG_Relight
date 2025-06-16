@@ -201,9 +201,9 @@ export class LightEditor {
                         node_id: this.currentNode.id
                     })
                 });
-                console.log('[RelightNode] 已发送取消信号');
+                console.log('[RelightNode] 已发送取消信号Cancellation signal sent');
             } catch (error) {
-                console.error('[RelightNode] 发送取消信号失败:', error);
+                console.error('[RelightNode] 发送取消信号失败Failed to send cancel signal:', error);
             }
         }
         document.removeEventListener('mousemove', this.onCanvasMouseMoveHandler);
@@ -475,7 +475,7 @@ export class LightEditor {
             this.depthMapTexture = depthMap;
             
             if (!texture.image || !texture.image.complete) {
-                console.warn('[RelightNode] 纹理图像未完全加载');
+                console.warn('[RelightNode] 纹理图像未完全加载Texture image not fully loaded');
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
             const imageWidth = texture.image.width;
@@ -500,7 +500,7 @@ export class LightEditor {
             const frustumWidth = frustumHeight * imageAspect;
 
             if (!this.isSceneSetup) {
-                console.log('[RelightNode] 首次创建场景');
+                console.log('[RelightNode] 首次创建场景Creating a scene for the first time');
                 this.scene = new THREE.Scene();
                 this.camera = new THREE.OrthographicCamera(
                     frustumWidth / -2,
@@ -759,9 +759,9 @@ export class LightEditor {
                     <div class="light-source-color" style="background-color: ${source.indicatorColor}"></div>
                     <span class="light-source-name">${typeIcon} ${source.name}</span>
                     <div class="light-source-controls">
-                        <input type="color" class="light-color-picker" value="${source.lightColor || '#ffffff'}" title="选择光源颜色">
+                        <input type="color" class="light-color-picker" value="${source.lightColor || '#ffffff'}" title="选择光源颜色 Select the light source color">
                         <button class="light-source-visibility" title="${source.light.visible ? '隐藏' : '显示'}">${visibilityIcon}</button>
-                        <button class="light-source-delete" title="删除">🗑️</button>
+                        <button class="light-source-delete" title="删除 delete">🗑️</button>
                     </div>
                 </div>
             `;
@@ -769,7 +769,7 @@ export class LightEditor {
             item.dataset.lightIndex = index;
             item.addEventListener('click', (e) => {
                 // 添加点击时的日志输出
-                console.log(`[RelightNode] 点击了光源项 ${index}, 当前活动光源: ${this.activeSourceIndex}`);
+                console.log(`[RelightNode] 点击了光源项  Click on the light source ${index}, 当前活动光源 Currently active light source: ${this.activeSourceIndex}`);
                 this.setActiveLight(index);
             });
             const colorPicker = item.querySelector('.light-color-picker');
@@ -791,7 +791,7 @@ export class LightEditor {
                     this.toggleLightVisibility(index);
                     // 更新按钮图标
                     visibilityBtn.textContent = source.light.visible ? '👁️' : '👁️‍🗨️';
-                    visibilityBtn.title = source.light.visible ? '隐藏' : '显示';
+                    visibilityBtn.title = source.light.visible ? '隐藏Hide' : '显示Show';
                 });
             }
             listContainer.appendChild(item);
@@ -799,7 +799,7 @@ export class LightEditor {
     }
 
     setActiveLight(index) {
-        console.log(`[RelightNode] 设置活动光源: ${index}, 当前光源数量: ${this.lightSources.length}`);
+        console.log(`[RelightNode] 设置活动光源Set active light source: ${index}, 当前光源数量Current number of light sources: ${this.lightSources.length}`);
         
         // 先清除所有光源的选中状态
         this.lightSources.forEach(source => {
@@ -817,13 +817,13 @@ export class LightEditor {
         if (source && source.indicator) {
             const ring = source.indicator.querySelector('.selection-ring');
             if (ring) {
-                console.log(`[RelightNode] 显示光源 ${index} 的选择环`);
+                console.log(`[RelightNode] 显示光源Display Light Source ${index} 的选择环Selection ring`);
                 ring.style.display = 'block';
             } else {
-                console.warn(`[RelightNode] 光源 ${index} 没有选择环元素`);
+                console.warn(`[RelightNode] 光源 ${index} 没有选择环元素No ring element selected`);
             }
         } else {
-            console.warn(`[RelightNode] 光源 ${index} 或其指示器不存在`);
+            console.warn(`[RelightNode] 光源light source ${index} 或其指示器不存在or its indicator does not exist`);
         }
 
         // 更新光源列表UI中的活动项
@@ -959,10 +959,10 @@ export class LightEditor {
         try {
             this.currentNode = app.graph.getNodeById(nodeId);
             if (!this.currentNode) {
-                console.error('[RelightNode] 找不到节点:', nodeId);
+                console.error('[RelightNode] 找不到节点Node not found:', nodeId);
                 return;
             }
-            console.log('[RelightNode] 开始处理图像...');
+            console.log('[RelightNode] 开始处理图像Start processing the image...');
             const { bg_image, bg_depth_map, bg_normal_map, has_mask, mask } = detail;
             this.hasMask = has_mask;
             this.modal.showModal();
@@ -995,14 +995,14 @@ export class LightEditor {
             ];
             if (has_mask && mask) {
                 texturePromises.push(SceneUtils.base64ToTexture(mask));
-                console.log('[RelightNode] 检测到遮罩数据，将加载遮罩纹理');
+                console.log('[RelightNode] 检测到遮罩数据，将加载遮罩纹理Mask data is detected and the mask texture will be loaded');
             }
             const loadedTextures = await Promise.all(texturePromises);
             const texture = loadedTextures[0];
             const depthMap = loadedTextures[1];
             const normalMap = loadedTextures[2];
             const maskTexture = has_mask ? loadedTextures[3] : null;
-            console.log('[RelightNode] 纹理加载完成，设置场景...');
+            console.log('[RelightNode] 纹理加载完成，设置场景Texture loading complete, set up the scene...');
             await this.setupScene(texture, depthMap, normalMap, maskTexture);
             
             // 移除画布上的所有指示器元素
@@ -1011,7 +1011,7 @@ export class LightEditor {
             
             const configRestored = await this.restoreLightConfiguration(nodeId);
             if (!configRestored) {
-                console.log('[RelightNode] 没有找到已保存的配置，使用空白配置');
+                console.log('[RelightNode] 没有找到已保存的配置，使用空白配置No saved configuration found, using a blank configuration');
                 // 没有恢复到配置，保持空白状态
             }
             
@@ -1028,13 +1028,13 @@ export class LightEditor {
                 
                 // 添加新的事件监听器
                 newAddLightBtn.addEventListener('click', () => {
-                    console.log('[RelightNode] 添加新光源');
+                    console.log('[RelightNode] 添加新光源Adding a New Light');
                     if (this.scene) {
                         const newSource = this.createLightSource();
-                        console.log('[RelightNode] 新光源已创建，ID:', newSource.id);
+                        console.log('[RelightNode] 新光源已创建New light source created，ID:', newSource.id);
                         this.updateLightSourcesList();
                     } else {
-                        console.error('[RelightNode] 场景未初始化，无法添加光源');
+                        console.error('[RelightNode] 场景未初始化，无法添加光源The scene is not initialized, so light sources cannot be added.');
                     }
                 });
             }
@@ -1042,9 +1042,9 @@ export class LightEditor {
             // 初始化光源列表
             this.updateLightSourcesList();
             
-            console.log('[RelightNode] 编辑器显示成功，当前光源数量:', this.lightSources.length);
+            console.log('[RelightNode] 编辑器显示成功，当前光源数量The editor displays success, the current number of light sources:', this.lightSources.length);
         } catch (error) {
-            console.error('[RelightNode] 处理图像时出错:', error);
+            console.error('[RelightNode] 处理图像时出错Error processing image:', error);
         }
     }
 
@@ -1208,7 +1208,7 @@ export class LightEditor {
                     // 确保DOM元素已完全加载并计算好尺寸
                     setTimeout(() => {
                         this.updateSpotlightLine(source);
-                        console.log('[RelightNode] 更新聚光灯连接线:', source.name);
+                        console.log('[RelightNode] 更新聚光灯连接线Update spotlight connector:', source.name);
                     }, 50);
                 }
             }
@@ -1267,11 +1267,11 @@ export class LightEditor {
         try {
             this.currentNode = app.graph.getNodeById(nodeId);
             if (!this.currentNode) {
-                console.error('[RelightNode] 找不到节点:', nodeId);
+                console.error('[RelightNode] 找不到节点Node not found:', nodeId);
                 return;
             }
             
-            console.log('[RelightNode] 开始无弹窗处理图像...');
+            console.log('[RelightNode] 开始无弹窗处理图像Start processing images without pop-up window...');
             const { bg_image, bg_depth_map, bg_normal_map, has_mask, mask } = detail;
             this.hasMask = has_mask;
             
@@ -1346,9 +1346,9 @@ export class LightEditor {
             // 保存当前配置以供将来使用
             this.saveLightConfiguration(nodeId);
             
-            console.log('[RelightNode] 无弹窗处理完成');
+            console.log('[RelightNode] 无弹窗处理完成No pop-up window processing completed');
         } catch (error) {
-            console.error('[RelightNode] 无弹窗处理错误:', error);
+            console.error('[RelightNode] 无弹窗处理错误No pop-up window processing error:', error);
         }
     }
 
@@ -1402,7 +1402,7 @@ export class LightEditor {
             
             return true;
         } catch (error) {
-            console.error('[RelightNode] 临时场景设置错误:', error);
+            console.error('[RelightNode] 临时场景设置错误Temporary scene setting error:', error);
             return false;
         }
     }
